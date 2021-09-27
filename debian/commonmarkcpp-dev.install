@@ -1,0 +1,3 @@
+usr/include/commonmarkcpp/*.h
+usr/lib/libcommonmarkcpp.so
+usr/share/cmake/CommonMarkCpp/*
