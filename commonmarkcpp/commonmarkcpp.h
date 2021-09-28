@@ -30,6 +30,11 @@
 //
 
 
+// libutf8 lib
+//
+#include    <libutf8/iterator.h>
+
+
 // C++ lib
 //
 #include    <memory>
@@ -46,15 +51,23 @@ class commonmarkcpp
 {
 public:
     typedef std::shared_ptr<commonmarkcpp>
-                        pointer_t;
+                            pointer_t;
 
-    void                add_input(std::string const & input);
-    void                flush();
-    std::string         get_output();
+                            commonmarkcpp();
+
+    void                    add_input(std::string const & input);
+    void                    flush();
+    std::string             get_output();
 
 private:
-    std::string         f_input = std::string();
-    std::string         f_output = std::string();
+    char32_t                getc();
+
+    std::string             f_input = std::string();
+    libutf8::utf8_iterator  f_iterator;  // must be defined in constructors
+    std::size_t             f_pos = 0;
+    char32_t                f_last_char = U'\0';
+
+    std::string             f_output = std::string();
 };
 
 

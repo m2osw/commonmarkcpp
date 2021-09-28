@@ -47,6 +47,19 @@ namespace cm
 
 
 
+/** \brief Setup the UTF-8 iterator to go through the input string data.
+ *
+ * The constructor initializes the UTF-8 iterator which we use to read
+ * the characters as char32_t values. We then reconvert them to UTF-8
+ * on output. This process allows us to at least fix any invalid
+ * UTF-8 characters (later we also want to look at making sure it
+ * is also canonicalized).
+ */
+commonmarkcpp::commonmarkcpp()
+    : f_iterator(f_input)
+{
+}
+
 
 /** \brief Add some input to the parser.
  *
@@ -59,6 +72,13 @@ namespace cm
  */
 void commonmarkcpp::add_input(std::string const & input)
 {
+    // don't waste any time if the input string is empty
+    //
+    if(input.empty())
+    {
+        return;
+    }
+
     f_input += input;
 }
 
@@ -89,6 +109,22 @@ std::string commonmarkcpp::get_output()
     f_output.clear();
 
     return result;
+}
+
+
+char32_t commonmarkcpp::getc()
+{
+    if(f_pos >= f_input.size())
+    {
+        f_pos = 0;
+        f_input.clear();
+        f_last_char = U'\0';
+    }
+    else
+    {
+    }
+
+    return f_last_char;
 }
 
 
