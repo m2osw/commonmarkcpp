@@ -18,6 +18,31 @@
 # 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 ##
+## generate entities
+##
+project(generate_entities)
+
+add_executable(generate_entities
+    generate_entities.cpp
+)
+
+target_include_directories(${PROJECT_NAME}
+    PUBLIC
+        ${ADVGETOPT_INCLUDE_DIRS}
+        ${EVENTDISPATCHER_INCLUDE_DIRS}
+        ${LIBEXCEPT_INCLUDE_DIRS}
+        ${LIBUTF8_INCLUDE_DIRS}
+)
+
+target_link_libraries(${PROJECT_NAME}
+    ${ADVGETOPT_LIBRARIES}
+    ${EVENTDISPATCHER_LIBRARIES}
+    ${LIBEXCEPT_LIBRARIES}
+    ${LIBUTF8_LIBRARIES}
+)
+
+
+##
 ## commonmarkcpp library
 ##
 project(commonmarkcpp)
