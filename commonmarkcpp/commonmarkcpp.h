@@ -64,8 +64,11 @@ private:
 
     std::string             f_input = std::string();
     libutf8::utf8_iterator  f_iterator;  // must be defined in constructors
-    std::size_t             f_pos = 0;
+    int                     f_unget_pos = 0;
+    char32_t                f_unget[2] = {};
     char32_t                f_last_char = U'\0';
+
+    bool                    f_flushed = false;
 
     std::string             f_output = std::string();
 };

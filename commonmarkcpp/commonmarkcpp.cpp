@@ -22,11 +22,24 @@
  *
  * This file is the implementation of the commonmarkcpp class which allows
  * one to convert an input string in HTML.
+ *
+ * I try to include references to the documentation throughout the code
+ * as in:
+ *
+ *     [REF] <section-name>
+ *
+ * The reference is found at https://spec.commonmark.org/ and I used
+ * version 0.30 first my first version here. This is here:
+ * https://spec.commonmark.org/0.30/
+ *
+ * \sa https://spec.commonmark.org/
  */
 
 // self
 //
 #include    "commonmarkcpp/commonmarkcpp.h"
+
+#include    "commonmarkcpp/exception.h"
 
 
 // C++ lib
@@ -79,6 +92,11 @@ void commonmarkcpp::add_input(std::string const & input)
         return;
     }
 
+    if(f_flushed)
+    {
+        throw already_flushed("you cannot add more input after calling flush()");
+    }
+
     f_input += input;
 }
 
@@ -86,6 +104,7 @@ void commonmarkcpp::add_input(std::string const & input)
 /** \brief Flush the stream.
  *
  * This function forces all remaining input to be passed out as required.
+ * Once you are done adding input, you can call this function.
  */
 void commonmarkcpp::flush()
 {
@@ -114,17 +133,24 @@ std::string commonmarkcpp::get_output()
 
 char32_t commonmarkcpp::getc()
 {
-    if(f_pos >= f_input.size())
+    if(f_unget_pos > 0)
     {
-        f_pos = 0;
-        f_input.clear();
-        f_last_char = U'\0';
-    }
-    else
-    {
+        --f_unget_pos;
+        f_last_char = f_unget[f_unget_pos];
+        return f_last_char;
     }
 
-    return f_last_char;
+    f_last_char = *f_iterator;
+    ++f_iterator;
+
+    // [REF] 2.3 Insecure characters
+    //
+    if(f_last_char == U'\0')
+    {
+        f_last_char = U'\xFFFD';
+    }
+
+    return f_last_char;   // returns libutf8::EOS at the end of the input
 }
 
 
