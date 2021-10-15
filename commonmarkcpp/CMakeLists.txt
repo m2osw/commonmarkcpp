@@ -43,6 +43,32 @@ target_link_libraries(${PROJECT_NAME}
 
 
 ##
+##
+##
+project(commonmark_entities)
+
+set(ENTITIES_CPP ${PROJECT_BINARY_DIR}/commonmark_entities.cpp)
+
+add_custom_command(
+    OUTPUT ${ENTITIES_CPP}
+    COMMAND generate_entities --output ${ENTITIES_CPP} entities.json
+    WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
+    MAIN_DEPENDENCY ${PROJECT_SOURCE_DIR}/entities.json
+    DEPENDS generate_entities
+)
+
+add_custom_target(${PROJECT_NAME}
+    ALL DEPENDS ${ENTITIES_CPP}
+)
+
+define_property(SOURCE
+    PROPERTY GENERATED
+    BRIEF_DOCS "The commonmark_entities.cpp file is a table of all the entities supported in MarkDown."
+    FULL_DOCS "The file is used to know whether a named entity is valid."
+)
+
+
+##
 ## commonmarkcpp library
 ##
 project(commonmarkcpp)
@@ -55,7 +81,10 @@ configure_file(
 
 add_library(${PROJECT_NAME} SHARED
     commonmarkcpp.cpp
+    ${CMAKE_CURRENT_BINARY_DIR}/commonmark_entities.cpp
     version.cpp
+
+    ${ENTITIES_CPP}
 )
 
 target_include_directories(${PROJECT_NAME}

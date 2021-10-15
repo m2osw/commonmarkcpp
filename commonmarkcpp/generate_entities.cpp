@@ -50,6 +50,7 @@
 //
 #include    <snapdev/file_contents.h>
 #include    <snapdev/not_reached.h>
+#include    <snapdev/pathinfo.h>
 
 
 // eventdispatcher lib
@@ -60,6 +61,11 @@
 // boost lib
 //
 #include    <boost/preprocessor/stringize.hpp>
+
+
+// C++ lib
+//
+#include    <iomanip>
 
 
 // last include
@@ -75,11 +81,19 @@ namespace
 const advgetopt::option g_options[] =
 {
     advgetopt::define_option(
-          advgetopt::Name("extensions")
-        , advgetopt::ShortName('x')
+          advgetopt::Name("verbose")
+        , advgetopt::ShortName('v')
         , advgetopt::Flags(advgetopt::all_flags<
               advgetopt::GETOPT_FLAG_GROUP_OPTIONS>())
-        , advgetopt::Help("allow our markdown extensions.")
+        , advgetopt::Help("display various verbose messages.")
+    ),
+    advgetopt::define_option(
+          advgetopt::Name("output")
+        , advgetopt::ShortName('o')
+        , advgetopt::Flags(advgetopt::all_flags<
+              advgetopt::GETOPT_FLAG_REQUIRED
+            , advgetopt::GETOPT_FLAG_GROUP_OPTIONS>())
+        , advgetopt::Help("display various verbose messages.")
     ),
     advgetopt::define_option(
           advgetopt::Name("filenames")
@@ -150,8 +164,12 @@ advgetopt::options_environment const g_options_environment =
 class entity_t
 {
 public:
+    typedef std::shared_ptr<entity_t>   pointer_t;
+    typedef std::vector<pointer_t>      vector_t;
+
                                     entity_t(std::string const & name);
 
+    std::string                     get_name() const;
     void                            add_code(int code);
     std::string                     get_codes() const;
 
@@ -171,9 +189,13 @@ public:
 private:
     int                             read();
     int                             parse();
+    int                             output_table();
 
     advgetopt::getopt               f_opt;
     std::string                     f_json_entities = std::string();
+    std::string                     f_output_filename = std::string();
+    entity_t::vector_t              f_entities = entity_t::vector_t();
+    bool                            f_verbose = false;
 };
 
 
@@ -181,6 +203,12 @@ private:
 entity_t::entity_t(std::string const & name)
     : f_name(name)
 {
+}
+
+
+std::string entity_t::get_name() const
+{
+    return f_name;
 }
 
 
@@ -205,6 +233,17 @@ entities::entities(int argc, char * argv[])
     : f_opt(g_options_environment)
 {
     f_opt.finish_parsing(argc, argv);
+
+    f_verbose = f_opt.is_defined("verbose");
+    if(f_opt.is_defined("output"))
+    {
+        f_output_filename = f_opt.get_string("output");
+    }
+    if(f_output_filename.empty())
+    {
+        std::cerr << "error: output filename is required.\n";
+        exit(1);
+    }
 }
 
 
@@ -217,6 +256,12 @@ int entities::run()
     }
 
     r = parse();
+    if(r != 0)
+    {
+        return r;
+    }
+
+    r = output_table();
     if(r != 0)
     {
         return r;
@@ -241,6 +286,12 @@ int entities::read()
             return 1;
         }
         f_json_entities += input.contents();
+    }
+
+    if(f_json_entities.empty())
+    {
+        std::cerr << "error: the JSON is not expected to be empty.\n";
+        return 1;
     }
 
     return 0;
@@ -272,7 +323,12 @@ int entities::parse()
             return 1;
         }
 
-        entity_t e(json.string());
+        if(json.string().empty())
+        {
+            std::cerr << "error: the name of an entity cannot be empty.\n";
+            return 1;
+        }
+        entity_t::pointer_t e(std::make_shared<entity_t>(json.string()));
 
         if(json.next_token() != libutf8::token_t::TOKEN_COLON)
         {
@@ -342,7 +398,7 @@ int entities::parse()
                         return 1;
                     }
 
-                    e.add_code(json.number());
+                    e->add_code(json.number());
 
                     auto const sep(json.next_token());
                     if(sep == libutf8::token_t::TOKEN_CLOSE_ARRAY)
@@ -361,7 +417,7 @@ int entities::parse()
             }
             else
             {
-                // if not codepoints, then characters, that's it for now
+                // if not "codepoints":, then "characters":, that's it for now
                 //
                 if(json.next_token() != libutf8::token_t::TOKEN_STRING)
                 {
@@ -370,6 +426,7 @@ int entities::parse()
                         << ": the characters field is expected to be a string.\n";
                     return 1;
                 }
+                // ignore this string in our processes
             }
 
             auto const more(json.next_token());
@@ -389,11 +446,28 @@ int entities::parse()
             }
         }
 
+        if(e->get_name().back() == ';')
+        {
+            f_entities.push_back(e);
+        }
+        else if(f_verbose)
+        {
+            std::cerr << "info: entity definition \""
+                << e->get_name()
+                << "\" is missing the ';', ignoring.\n";
+        }
+
         auto const n(json.next_token());
         if(n == libutf8::token_t::TOKEN_CLOSE_OBJECT)
         {
             // we reached the end
             //
+            if(f_verbose)
+            {
+                std::cerr << "info: found "
+                    << f_entities.size()
+                    << " entities.\n";
+            }
             return 0;
         }
 
@@ -405,6 +479,58 @@ int entities::parse()
             return 1;
         }
     }
+}
+
+
+int entities::output_table()
+{
+    std::sort(
+          f_entities.begin()
+        , f_entities.end()
+        , [](auto const & a, auto const & b)
+        {
+            return a->get_name() < b->get_name();
+        });
+
+    std::string header_filename(snap::pathinfo::replace_suffix(f_output_filename, ".cpp", ".h"));
+    std::ofstream hdr(header_filename);
+
+    hdr << "#include <cstddef>\n"
+        << "struct entity_t {\n"
+        << "char const * const f_name;\n"
+        << "char const * const f_codes;\n"
+        << "};\n"
+        << "constexpr std::size_t const ENTITY_COUNT = "
+                                << f_entities.size() << ";\n";
+
+    std::ofstream out(f_output_filename);
+
+    out << std::hex;
+
+    out << "#include \"" << header_filename << "\"\n"
+        << "constexpr entity_t g_entities[] = {\n";
+    for(auto e : f_entities)
+    {
+        std::string name(e->get_name());
+        out << "{ \""
+            << name.substr(1, name.length() - 2)
+            << "\", \"";
+
+        std::string codes(e->get_codes());
+        std::size_t const max(codes.length());
+        for(std::size_t idx(0); idx < max; ++idx)
+        {
+            out << "\\x"
+                << std::setw(2)
+                << std::setfill('0')
+                << static_cast<int>(static_cast<std::uint8_t>(codes[idx]));
+        }
+
+        out << "\" },\n";
+    }
+    out << "};\n";
+
+    return 0;
 }
 
 
