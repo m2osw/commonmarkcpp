@@ -29,7 +29,7 @@
 
 // commonmarkcpp lib
 //
-#include    "commonmarkcpp/commonmarkcpp.h"
+#include    "commonmarkcpp/commonmark.h"
 
 #include    "commonmarkcpp/version.h"
 

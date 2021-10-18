@@ -33,7 +33,8 @@ if(Catch2_FOUND)
     add_executable(${PROJECT_NAME}
         catch_main.cpp
 
-        catch_commonmarkcpp.cpp
+        catch_character.cpp
+        catch_commonmark.cpp
         catch_version.cpp
     )
 
