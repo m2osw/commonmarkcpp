@@ -28,12 +28,18 @@
 
 // self
 //
+#include    "commonmarkcpp/exception.h"
 
 
 // libutf8 lib
 //
 #include    <libutf8/iterator.h>
 #include    <libutf8/libutf8.h>
+
+
+// snapdev lib
+//
+#include    <snapdev/not_reached.h>
 
 
 // C++ lib
@@ -66,6 +72,8 @@ constexpr char32_t const    CHAR_COMMA = U',';                      // 002C
 constexpr char32_t const    CHAR_DASH = U'-';                       // 002D
 constexpr char32_t const    CHAR_PERIOD = U'.';                     // 002E
 constexpr char32_t const    CHAR_SLASH = U'/';                      // 002F
+constexpr char32_t const    CHAR_ZERO = U'0';                       // 0030
+constexpr char32_t const    CHAR_NINE = U'9';                       // 0039
 constexpr char32_t const    CHAR_COLON = U':';                      // 003A
 constexpr char32_t const    CHAR_SEMICOLON = U';';                  // 003B
 constexpr char32_t const    CHAR_LESS = U'<';                       // 003C
@@ -93,6 +101,19 @@ struct character
 {
     typedef std::basic_string<character>  string_t;
 
+    bool is_null() const
+    {
+        return f_char == CHAR_NULL;
+    }
+
+    void fix_null()
+    {
+        if(is_null())
+        {
+            f_char = CHAR_REPLACEMENT_CHARACTER;
+        }
+    }
+
     bool is_eol() const
     {
         return f_char == CHAR_LINE_FEED;
@@ -118,17 +139,10 @@ struct character
         return f_char == CHAR_SPACE;
     }
 
-    bool is_null() const
+    bool is_blank() const
     {
-        return f_char == CHAR_NULL;
-    }
-
-    void fix_null()
-    {
-        if(is_null())
-        {
-            f_char = CHAR_REPLACEMENT_CHARACTER;
-        }
+        return f_char == CHAR_SPACE
+            || f_char == CHAR_TAB;
     }
 
     bool is_thematic_break() const
@@ -138,23 +152,109 @@ struct character
             || f_char == CHAR_UNDERSCORE;
     }
 
-    bool is_dash() const
-    {
-        return f_char == CHAR_DASH;
-    }
-
     bool is_setext() const
     {
         return f_char == CHAR_DASH
             || f_char == CHAR_UNDERSCORE;
     }
 
-    bool is_hash() const
+    bool is_unordered_list_bullet() const
+    {
+        return f_char == CHAR_DASH
+            || f_char == CHAR_ASTERISK
+            || f_char == CHAR_PLUS;
+    }
+
+    bool is_ordered_list_end_marker() const
+    {
+        return f_char == CHAR_PERIOD
+            || f_char == CHAR_CLOSE_PARENTHESIS;
+    }
+
+    bool is_digit() const
+    {
+        return f_char >= CHAR_ZERO
+            && f_char <= CHAR_NINE;
+    }
+
+    bool digit_number() const
+    {
+        if(!is_digit())
+        {
+            throw commonmark_logic_error("digit_number() called with an invalid digit");
+        }
+        return f_char - CHAR_ZERO;
+    }
+
+    bool is_hexdigit() const
+    {
+        return (f_char >= CHAR_ZERO && f_char <= CHAR_NINE)
+            || (f_char >= 'a' && f_char <= 'f')
+            || (f_char >= 'A' && f_char <= 'F');
+    }
+
+    bool hexdigit_number() const
+    {
+        if(!is_hexdigit())
+        {
+            throw commonmark_logic_error("hexdigit_number() called with an invalid hexadecimal-digit");
+        }
+        if(f_char >= CHAR_ZERO && f_char <= CHAR_NINE)
+        {
+            return f_char - CHAR_ZERO;
+        }
+        if(f_char >= 'a' && f_char <= 'f')
+        {
+            return f_char - 'a' + 10;
+        }
+        //if(f_char >= 'A' && f_char <= 'F') -- we already know it is an hexdigit
+        {
+            return f_char - 'A' + 10;
+        }
+        snap::NOT_REACHED();
+    }
+
+    bool is_hash() const // 0x0023
     {
         return f_char == CHAR_HASH;
     }
 
-    bool is_backslash() const
+    bool is_dash() const // 0x002D
+    {
+        return f_char == CHAR_DASH;
+    }
+
+    bool is_period() const // 0x002E
+    {
+        return f_char == CHAR_PERIOD;
+    }
+
+    bool is_close_parenthesis() const // 0x0029
+    {
+        return f_char == CHAR_CLOSE_PARENTHESIS;
+    }
+
+    bool is_asterisk() const // 0x002A
+    {
+        return f_char == CHAR_ASTERISK;
+    }
+
+    bool is_plus() const // 0x002B
+    {
+        return f_char == CHAR_PLUS;
+    }
+
+    bool is_semicolon() const // 003B
+    {
+        return f_char == CHAR_SEMICOLON;
+    }
+
+    bool is_greater() const // 003E
+    {
+        return f_char == CHAR_GREATER;
+    }
+
+    bool is_backslash() const // 005C
     {
         return f_char == CHAR_BACKSLASH;
     }
@@ -223,6 +323,26 @@ struct character
         return f_char != c.f_char;
     }
 
+    bool operator < (char32_t const c) const
+    {
+        return f_char < c;
+    }
+
+    bool operator <= (character const & c) const
+    {
+        return f_char <= c.f_char;
+    }
+
+    bool operator > (char32_t const c) const
+    {
+        return f_char > c;
+    }
+
+    bool operator >= (character const & c) const
+    {
+        return f_char >= c.f_char;
+    }
+
     std::string to_utf8() const
     {
         return libutf8::to_u8string(f_char);
@@ -231,7 +351,7 @@ struct character
     char32_t            f_char = CHAR_NULL;
     std::uint32_t       f_line = 0;
     std::uint32_t       f_column = 0;
-    std::uint32_t       f_flags = 0;
+    //std::uint32_t       f_flags = 0;
 };
 
 

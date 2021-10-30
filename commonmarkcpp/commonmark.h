@@ -28,7 +28,7 @@
 
 // self
 //
-#include    "commonmarkcpp/character.h"
+#include    "commonmarkcpp/block.h"
 
 
 // libutf8 lib
@@ -39,6 +39,7 @@
 //
 #include    <memory>
 #include    <string>
+#include    <vector>
 
 
 
@@ -46,6 +47,13 @@ namespace cm
 {
 
 
+
+enum class indentation_t
+{
+    INDENTATION_PARAGRAPH,
+    INDENTATION_CODE_BLOCK,
+    INDENTATION_CONTINUATION,
+};
 
 
 
@@ -57,43 +65,55 @@ public:
 
                             commonmark();
 
+    void                    add_document_div(bool add = true);
     void                    add_classes(bool add = true);
-    void                    add_input(std::string const & input);
-    void                    process();
-    void                    flush();
-    std::string             get_output();
+    void                    convert_entities(bool convert);
+
+    std::string             process(std::string const & input);
 
 private:
-    enum block_type_t
-    {
-        BLOCK_TYPE_PARAGRAPH,
-        BLOCK_TYPE_CODE_BLOCK,
-    };
-
     character               getc();
-    character::string_t     get_line();
-
-    void                    block();
+    void                    get_line();
     static bool             is_empty(character::string_t const & str);
-    bool                    process_thematic_break_or_setext_heading(character::string_t const & line);
-    bool                    process_header(character::string_t const & line);
-    bool                    process_indented_code_block(character::string_t const & line);
-    void                    process_inline(character::string_t const & line);
-    void                    process_code(character::string_t const & line);
+
+    void                    parse();
+    character::string_t::const_iterator
+                            parse_containers();
+    bool                    parse_blank(character::string_t::const_iterator & it);
+    bool                    parse_blockquote(character::string_t::const_iterator & it);
+    bool                    parse_list(character::string_t::const_iterator & it);
+    bool                    is_thematic_break(character::string_t::const_iterator it);
+
+    void                    process_empty_line();
+    void                    append_line();
+
+    bool                    process_paragraph(character::string_t::const_iterator & it);
+    bool                    process_thematic_break_or_setext_heading(character::string_t::const_iterator & it);
+    bool                    process_header(character::string_t::const_iterator & it);
+    bool                    process_indented_code_block(character::string_t::const_iterator & it);
+
+    void                    generate(block::pointer_t b);
+    void                    generate_inline(character::string_t const & line);
+    void                    generate_code(character::string_t const & line);
 
     std::string             f_input = std::string();
     libutf8::utf8_iterator  f_iterator;  // must be defined in constructors
     //int                     f_unget_pos = 0;
     //character_t             f_unget[2] = {};
     bool                    f_eos = false;
+    bool                    f_code_block = false;
     std::uint32_t           f_line = 1;
     std::uint32_t           f_column = 1;
-    //character::string_t     f_last_line = character::string_t();
-    std::uint32_t           f_indentation = 0;  // i.e. within a list, we get indented paragraphs
-    block_type_t            f_block_type = BLOCK_TYPE_PARAGRAPH;
-    character::string_t     f_block = character::string_t();
+    character::string_t     f_last_line = character::string_t();
+    indentation_t           f_indentation = indentation_t::INDENTATION_PARAGRAPH;
+    block::pointer_t        f_document = block::pointer_t();
+    block::pointer_t        f_last_block = block::pointer_t();
+    block::pointer_t        f_top_working_block = block::pointer_t();
+    block::pointer_t        f_working_block = block::pointer_t();
 
+    bool                    f_add_document_div = false;
     bool                    f_add_classes = false;
+    bool                    f_convert_entities = true;
     bool                    f_flushed = false;
 
     std::string             f_output = std::string();

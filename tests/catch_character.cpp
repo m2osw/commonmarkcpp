@@ -57,8 +57,13 @@ CATCH_TEST_CASE("character", "[test-suite]")
         CATCH_REQUIRE_FALSE(c.is_eol());
         CATCH_REQUIRE_FALSE(c.is_thematic_break());
         CATCH_REQUIRE_FALSE(c.is_dash());
+        CATCH_REQUIRE_FALSE(c.is_period());
         CATCH_REQUIRE_FALSE(c.is_setext());
         CATCH_REQUIRE_FALSE(c.is_hash());
+        CATCH_REQUIRE_FALSE(c.is_close_parenthesis());
+        CATCH_REQUIRE_FALSE(c.is_asterisk());
+        CATCH_REQUIRE_FALSE(c.is_plus());
+        CATCH_REQUIRE_FALSE(c.is_semicolon());
         CATCH_REQUIRE_FALSE(c.is_backslash());
         CATCH_REQUIRE_FALSE(c.is_ascii_punctuation());
 
@@ -71,8 +76,13 @@ CATCH_TEST_CASE("character", "[test-suite]")
         CATCH_REQUIRE_FALSE(c.is_eol());
         CATCH_REQUIRE_FALSE(c.is_thematic_break());
         CATCH_REQUIRE_FALSE(c.is_dash());
+        CATCH_REQUIRE_FALSE(c.is_period());
         CATCH_REQUIRE_FALSE(c.is_setext());
         CATCH_REQUIRE_FALSE(c.is_hash());
+        CATCH_REQUIRE_FALSE(c.is_close_parenthesis());
+        CATCH_REQUIRE_FALSE(c.is_asterisk());
+        CATCH_REQUIRE_FALSE(c.is_plus());
+        CATCH_REQUIRE_FALSE(c.is_semicolon());
         CATCH_REQUIRE_FALSE(c.is_backslash());
         CATCH_REQUIRE_FALSE(c.is_ascii_punctuation());
 
@@ -85,8 +95,13 @@ CATCH_TEST_CASE("character", "[test-suite]")
         CATCH_REQUIRE_FALSE(c.is_eol());
         CATCH_REQUIRE_FALSE(c.is_thematic_break());
         CATCH_REQUIRE_FALSE(c.is_dash());
+        CATCH_REQUIRE_FALSE(c.is_period());
         CATCH_REQUIRE_FALSE(c.is_setext());
         CATCH_REQUIRE_FALSE(c.is_hash());
+        CATCH_REQUIRE_FALSE(c.is_close_parenthesis());
+        CATCH_REQUIRE_FALSE(c.is_asterisk());
+        CATCH_REQUIRE_FALSE(c.is_plus());
+        CATCH_REQUIRE_FALSE(c.is_semicolon());
         CATCH_REQUIRE_FALSE(c.is_backslash());
         CATCH_REQUIRE_FALSE(c.is_ascii_punctuation());
 
@@ -99,8 +114,13 @@ CATCH_TEST_CASE("character", "[test-suite]")
         CATCH_REQUIRE_FALSE(c.is_eol());
         CATCH_REQUIRE_FALSE(c.is_thematic_break());
         CATCH_REQUIRE_FALSE(c.is_dash());
+        CATCH_REQUIRE_FALSE(c.is_period());
         CATCH_REQUIRE_FALSE(c.is_setext());
         CATCH_REQUIRE_FALSE(c.is_hash());
+        CATCH_REQUIRE_FALSE(c.is_close_parenthesis());
+        CATCH_REQUIRE_FALSE(c.is_asterisk());
+        CATCH_REQUIRE_FALSE(c.is_plus());
+        CATCH_REQUIRE_FALSE(c.is_semicolon());
         CATCH_REQUIRE_FALSE(c.is_backslash());
         CATCH_REQUIRE_FALSE(c.is_ascii_punctuation());
 
@@ -113,8 +133,13 @@ CATCH_TEST_CASE("character", "[test-suite]")
         CATCH_REQUIRE_FALSE(c.is_eol());
         CATCH_REQUIRE_FALSE(c.is_thematic_break());
         CATCH_REQUIRE_FALSE(c.is_dash());
+        CATCH_REQUIRE_FALSE(c.is_period());
         CATCH_REQUIRE_FALSE(c.is_setext());
         CATCH_REQUIRE_FALSE(c.is_hash());
+        CATCH_REQUIRE_FALSE(c.is_close_parenthesis());
+        CATCH_REQUIRE_FALSE(c.is_asterisk());
+        CATCH_REQUIRE_FALSE(c.is_plus());
+        CATCH_REQUIRE_FALSE(c.is_semicolon());
         CATCH_REQUIRE_FALSE(c.is_backslash());
         CATCH_REQUIRE_FALSE(c.is_ascii_punctuation());
 
@@ -127,98 +152,128 @@ CATCH_TEST_CASE("character", "[test-suite]")
         CATCH_REQUIRE(c.is_eol());
         CATCH_REQUIRE_FALSE(c.is_thematic_break());
         CATCH_REQUIRE_FALSE(c.is_dash());
+        CATCH_REQUIRE_FALSE(c.is_period());
         CATCH_REQUIRE_FALSE(c.is_setext());
         CATCH_REQUIRE_FALSE(c.is_hash());
+        CATCH_REQUIRE_FALSE(c.is_close_parenthesis());
+        CATCH_REQUIRE_FALSE(c.is_asterisk());
+        CATCH_REQUIRE_FALSE(c.is_plus());
+        CATCH_REQUIRE_FALSE(c.is_semicolon());
         CATCH_REQUIRE_FALSE(c.is_backslash());
         CATCH_REQUIRE_FALSE(c.is_ascii_punctuation());
 
-        c.f_char = U'*';
-        CATCH_REQUIRE_FALSE(c.is_null());
-        CATCH_REQUIRE_FALSE(c.is_tab());
-        CATCH_REQUIRE_FALSE(c.is_space());
-        CATCH_REQUIRE_FALSE(c.is_eos());
-        CATCH_REQUIRE_FALSE(c.is_carriage_return());
-        CATCH_REQUIRE_FALSE(c.is_eol());
-        CATCH_REQUIRE(c.is_thematic_break());
-        CATCH_REQUIRE_FALSE(c.is_dash());
-        CATCH_REQUIRE_FALSE(c.is_setext());
-        CATCH_REQUIRE_FALSE(c.is_hash());
-        CATCH_REQUIRE_FALSE(c.is_backslash());
-        CATCH_REQUIRE(c.is_ascii_punctuation());
-
-        c.f_char = U'_';
-        CATCH_REQUIRE_FALSE(c.is_null());
-        CATCH_REQUIRE_FALSE(c.is_tab());
-        CATCH_REQUIRE_FALSE(c.is_space());
-        CATCH_REQUIRE_FALSE(c.is_eos());
-        CATCH_REQUIRE_FALSE(c.is_carriage_return());
-        CATCH_REQUIRE_FALSE(c.is_eol());
-        CATCH_REQUIRE(c.is_thematic_break());
-        CATCH_REQUIRE_FALSE(c.is_dash());
-        CATCH_REQUIRE(c.is_setext());
-        CATCH_REQUIRE_FALSE(c.is_hash());
-        CATCH_REQUIRE_FALSE(c.is_backslash());
-        CATCH_REQUIRE(c.is_ascii_punctuation());
-
-        c.f_char = U'-';
-        CATCH_REQUIRE_FALSE(c.is_null());
-        CATCH_REQUIRE_FALSE(c.is_tab());
-        CATCH_REQUIRE_FALSE(c.is_space());
-        CATCH_REQUIRE_FALSE(c.is_eos());
-        CATCH_REQUIRE_FALSE(c.is_carriage_return());
-        CATCH_REQUIRE_FALSE(c.is_eol());
-        CATCH_REQUIRE(c.is_thematic_break());
-        CATCH_REQUIRE(c.is_dash());
-        CATCH_REQUIRE(c.is_setext());
-        CATCH_REQUIRE_FALSE(c.is_hash());
-        CATCH_REQUIRE_FALSE(c.is_backslash());
-        CATCH_REQUIRE(c.is_ascii_punctuation());
-
-        c.f_char = U'#';
-        CATCH_REQUIRE_FALSE(c.is_null());
-        CATCH_REQUIRE_FALSE(c.is_tab());
-        CATCH_REQUIRE_FALSE(c.is_space());
-        CATCH_REQUIRE_FALSE(c.is_eos());
-        CATCH_REQUIRE_FALSE(c.is_carriage_return());
-        CATCH_REQUIRE_FALSE(c.is_eol());
-        CATCH_REQUIRE_FALSE(c.is_thematic_break());
-        CATCH_REQUIRE_FALSE(c.is_dash());
-        CATCH_REQUIRE_FALSE(c.is_setext());
-        CATCH_REQUIRE(c.is_hash());
-        CATCH_REQUIRE_FALSE(c.is_backslash());
-        CATCH_REQUIRE(c.is_ascii_punctuation());
-
-        c.f_char = U'\\';
-        CATCH_REQUIRE_FALSE(c.is_null());
-        CATCH_REQUIRE_FALSE(c.is_tab());
-        CATCH_REQUIRE_FALSE(c.is_space());
-        CATCH_REQUIRE_FALSE(c.is_eos());
-        CATCH_REQUIRE_FALSE(c.is_carriage_return());
-        CATCH_REQUIRE_FALSE(c.is_eol());
-        CATCH_REQUIRE_FALSE(c.is_thematic_break());
-        CATCH_REQUIRE_FALSE(c.is_dash());
-        CATCH_REQUIRE_FALSE(c.is_setext());
-        CATCH_REQUIRE_FALSE(c.is_hash());
-        CATCH_REQUIRE(c.is_backslash());
-        CATCH_REQUIRE(c.is_ascii_punctuation());
-
-        std::string const ascii_punctuation("!\"$%&'()+,./:;<=>?@[]^`{|}~");
+        std::string const ascii_punctuation("!\"#$%&'()*+,-./:;<=>?@[\\]^_`{|}~");
         char32_t f = U'a';
         for(auto p : ascii_punctuation)
         {
             c.f_char = static_cast<char32_t>(p);
+
+            // ASCII punctuation
+            //
+            CATCH_REQUIRE(c.is_ascii_punctuation());
+
+            // non-punctuation
+            //
             CATCH_REQUIRE_FALSE(c.is_null());
             CATCH_REQUIRE_FALSE(c.is_tab());
             CATCH_REQUIRE_FALSE(c.is_space());
             CATCH_REQUIRE_FALSE(c.is_eos());
             CATCH_REQUIRE_FALSE(c.is_carriage_return());
             CATCH_REQUIRE_FALSE(c.is_eol());
-            CATCH_REQUIRE_FALSE(c.is_thematic_break());
-            CATCH_REQUIRE_FALSE(c.is_dash());
-            CATCH_REQUIRE_FALSE(c.is_setext());
-            CATCH_REQUIRE_FALSE(c.is_hash());
-            CATCH_REQUIRE_FALSE(c.is_backslash());
-            CATCH_REQUIRE(c.is_ascii_punctuation());
+            CATCH_REQUIRE_FALSE(c.is_digit());
+            CATCH_REQUIRE_FALSE(c.is_hexdigit());
+
+            // specialized punctuation
+            //
+            if(p == '*'
+            || p == '-'
+            || p == '_')
+            {
+                CATCH_REQUIRE(c.is_thematic_break());
+            }
+            else
+            {
+                CATCH_REQUIRE_FALSE(c.is_thematic_break());
+            }
+            if(p == '-'
+            || p == '_')
+            {
+                CATCH_REQUIRE(c.is_setext());
+            }
+            else
+            {
+                CATCH_REQUIRE_FALSE(c.is_setext());
+            }
+
+            // simple punctuation
+            //
+            if(p == '-')
+            {
+                CATCH_REQUIRE(c.is_dash());
+            }
+            else
+            {
+                CATCH_REQUIRE_FALSE(c.is_dash());
+            }
+            if(p == '.')
+            {
+                CATCH_REQUIRE(c.is_period());
+            }
+            else
+            {
+                CATCH_REQUIRE_FALSE(c.is_period());
+            }
+            if(p == '#')
+            {
+                CATCH_REQUIRE(c.is_hash());
+            }
+            else
+            {
+                CATCH_REQUIRE_FALSE(c.is_hash());
+            }
+            if(p == ')')
+            {
+                CATCH_REQUIRE(c.is_close_parenthesis());
+            }
+            else
+            {
+                CATCH_REQUIRE_FALSE(c.is_close_parenthesis());
+            }
+            if(p == '*')
+            {
+                CATCH_REQUIRE(c.is_asterisk());
+            }
+            else
+            {
+                CATCH_REQUIRE_FALSE(c.is_asterisk());
+            }
+            if(p == '+')
+            {
+                CATCH_REQUIRE(c.is_plus());
+            }
+            else
+            {
+                CATCH_REQUIRE_FALSE(c.is_plus());
+            }
+            if(p == ';')
+            {
+                CATCH_REQUIRE(c.is_semicolon());
+            }
+            else
+            {
+                CATCH_REQUIRE_FALSE(c.is_semicolon());
+            }
+            if(p == '\\')
+            {
+                CATCH_REQUIRE(c.is_backslash());
+            }
+            else
+            {
+                CATCH_REQUIRE_FALSE(c.is_backslash());
+            }
+
+            // various compares
+            //
             CATCH_REQUIRE(c == c.f_char);
             CATCH_REQUIRE(c == c);
             cm::character d;
@@ -228,7 +283,14 @@ CATCH_TEST_CASE("character", "[test-suite]")
             CATCH_REQUIRE(c != d);
             d.f_char = static_cast<char32_t>(p);
             CATCH_REQUIRE(c == d);
-            ++f;
+            if(f == U'z')
+            {
+                f = U'a';
+            }
+            else
+            {
+                ++f;
+            }
         }
 
         // go back to 'null' to make sure
@@ -241,8 +303,13 @@ CATCH_TEST_CASE("character", "[test-suite]")
         CATCH_REQUIRE_FALSE(c.is_eol());
         CATCH_REQUIRE_FALSE(c.is_thematic_break());
         CATCH_REQUIRE_FALSE(c.is_dash());
+        CATCH_REQUIRE_FALSE(c.is_period());
         CATCH_REQUIRE_FALSE(c.is_setext());
         CATCH_REQUIRE_FALSE(c.is_hash());
+        CATCH_REQUIRE_FALSE(c.is_close_parenthesis());
+        CATCH_REQUIRE_FALSE(c.is_asterisk());
+        CATCH_REQUIRE_FALSE(c.is_plus());
+        CATCH_REQUIRE_FALSE(c.is_semicolon());
         CATCH_REQUIRE_FALSE(c.is_backslash());
         CATCH_REQUIRE_FALSE(c.is_ascii_punctuation());
     }
@@ -267,6 +334,36 @@ CATCH_TEST_CASE("character", "[test-suite]")
         std::stringstream ss;
         ss << str;
         CATCH_REQUIRE(ss.str() == "hello");
+    }
+    CATCH_END_SECTION()
+
+    CATCH_START_SECTION("cm: character: digits")
+    {
+        for(char32_t idx(0); idx < 0x110000; ++idx)
+        {
+            cm::character c;
+            c.f_char = static_cast<char32_t>(idx);
+            if(idx >= '0' && idx <= '9')
+            {
+                CATCH_REQUIRE(c.is_digit());
+                CATCH_REQUIRE(c.is_hexdigit());
+            }
+            else if(idx >= 'a' && idx <= 'f')
+            {
+                CATCH_REQUIRE_FALSE(c.is_digit());
+                CATCH_REQUIRE(c.is_hexdigit());
+            }
+            else if(idx >= 'A' && idx <= 'F')
+            {
+                CATCH_REQUIRE_FALSE(c.is_digit());
+                CATCH_REQUIRE(c.is_hexdigit());
+            }
+            else
+            {
+                CATCH_REQUIRE_FALSE(c.is_digit());
+                CATCH_REQUIRE_FALSE(c.is_hexdigit());
+            }
+        }
     }
     CATCH_END_SECTION()
 }

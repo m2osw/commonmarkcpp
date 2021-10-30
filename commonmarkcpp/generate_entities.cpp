@@ -189,7 +189,8 @@ public:
 private:
     int                             read();
     int                             parse();
-    int                             output_table();
+    int                             output_table_cpp();
+    int                             output_table_binary();
 
     advgetopt::getopt               f_opt;
     std::string                     f_json_entities = std::string();
@@ -261,7 +262,13 @@ int entities::run()
         return r;
     }
 
-    r = output_table();
+    r = output_table_cpp();
+    if(r != 0)
+    {
+        return r;
+    }
+
+    r = output_table_binary();
     if(r != 0)
     {
         return r;
@@ -482,7 +489,7 @@ int entities::parse()
 }
 
 
-int entities::output_table()
+int entities::output_table_cpp()
 {
     std::sort(
           f_entities.begin()
@@ -496,19 +503,23 @@ int entities::output_table()
     std::ofstream hdr(header_filename);
 
     hdr << "#include <cstddef>\n"
+        << "namespace cm {\n"
         << "struct entity_t {\n"
         << "char const * const f_name;\n"
         << "char const * const f_codes;\n"
         << "};\n"
         << "constexpr std::size_t const ENTITY_COUNT = "
-                                << f_entities.size() << ";\n";
+                                << f_entities.size() << ";\n"
+        << "extern entity_t const g_entities[];\n"
+        << "} // namespace cm\n";
 
     std::ofstream out(f_output_filename);
 
     out << std::hex;
 
     out << "#include \"" << header_filename << "\"\n"
-        << "constexpr entity_t g_entities[] = {\n";
+        << "namespace cm {\n"
+        << "entity_t const g_entities[] = {\n";
     for(auto e : f_entities)
     {
         std::string name(e->get_name());
@@ -528,7 +539,70 @@ int entities::output_table()
 
         out << "\" },\n";
     }
-    out << "};\n";
+    out << "};\n"
+        << "} // namespace cm\n";
+
+    return 0;
+}
+
+
+int entities::output_table_binary()
+{
+    std::sort(
+          f_entities.begin()
+        , f_entities.end()
+        , [](auto const & a, auto const & b)
+        {
+            return a->get_name() < b->get_name();
+        });
+
+    std::string binary_filename(snap::pathinfo::replace_suffix(f_output_filename, ".cpp", ".hent"));
+    std::ofstream bin(binary_filename);
+
+    // file structure is
+    //
+    //      magic           4 characters
+    //      size            4 bytes
+    //      [
+    //      entity name     4 bytes
+    //      entity codes    4 bytes
+    //      ]*  repeat for each entity (`size` times)
+    //      name UTF-8 string   n bytes (null terminated)
+    //      code UTF-8 string   n bytes (null terminated)
+
+    // write a magic code
+    //
+    bin.write("HENT", 4);
+
+    // write the number of entities defined in this file
+    // (little endian on little endian machines and vice versa...)
+    //
+    std::uint32_t const count(f_entities.size());
+    bin.write(reinterpret_cast<char const *>(&count), sizeof(count));
+
+    std::string strings;
+
+    // the offset of the first string
+    //
+    std::uint32_t offset(count * sizeof(offset) * 2 + 8);
+
+    for(auto e : f_entities)
+    {
+        bin.write(reinterpret_cast<char const *>(&offset), sizeof(offset));
+        std::string name(e->get_name());
+        name = name.substr(1, name.length() - 2);
+        strings += name;
+        strings += '\0';
+        offset += name.size() + 1;
+
+        bin.write(reinterpret_cast<char const *>(&offset), sizeof(offset));
+        std::string const codes(e->get_codes());
+        strings += codes;
+        strings += '\0';
+        offset += codes.size() + 1;
+    }
+
+    bin.write(strings.c_str(), strings.length());
 
     return 0;
 }

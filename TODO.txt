@@ -1,0 +1,6 @@
+
+* Consider parsing the entities to a binary file we load when required?
+  (i.e. instead of linked in the library, which is great, but prevents
+  us from updating that data on the fly--i.e. if the list changes then
+  we have to recompile the library.)
+
