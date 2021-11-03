@@ -83,6 +83,7 @@ add_library(${PROJECT_NAME} SHARED
     block.cpp
     commonmark.cpp
     ${CMAKE_CURRENT_BINARY_DIR}/commonmark_entities.cpp
+    link.cpp
     version.cpp
 
     ${ENTITIES_CPP}
@@ -126,7 +127,11 @@ install(
 
 install(
     FILES
-        commonmarkcpp.h
+        block.h
+        character.h
+        commonmark.h
+        exception.h
+        link.h
         ${CMAKE_CURRENT_BINARY_DIR}/version.h
 
     DESTINATION

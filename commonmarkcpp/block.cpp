@@ -36,12 +36,14 @@
 #include    "commonmarkcpp/block.h"
 
 
+// snapdev lib
+//
+#include    <snapdev/trim_string.h>
+
+
 // C++ lib
 //
-//#include    <algorithm>
-//#include    <cstring>
 #include    <iostream>
-//#include    <sstream>
 
 
 // last include
@@ -137,11 +139,29 @@ bool block::is_paragraph() const
  * is viewed as verbatim, which means that it is not parsed for any kind of
  * special anything (no bold, no italic, no underline, no strikethrough...)
  *
- * \return true if the type is BLOCK_TYPE_CODE_BLOCK.
+ * \return true if the type is one of BLOCK_TYPE_CODE_BLOCK_....
  */
 bool block::is_code_block() const
 {
-    return f_type.f_char == BLOCK_TYPE_CODE_BLOCK;
+    return f_type == BLOCK_TYPE_CODE_BLOCK_INDENTED
+        || f_type == BLOCK_TYPE_CODE_BLOCK_GRAVE
+        || f_type == BLOCK_TYPE_CODE_BLOCK_TILDE;
+}
+
+
+/** \brief Check whether this block represents an indented block of code.
+ *
+ * The function checks the type to see whether it represents an indented
+ * block of code or not. If so, it returns true.
+ *
+ * The indented code blocks can be continued which is why we need to be
+ * able to distinguish this one type from the other.
+ *
+ * \return true if the type is BLOCK_TYPE_CODE_BLOCK_INDENTED.
+ */
+bool block::is_indented_code_block() const
+{
+    return f_type == BLOCK_TYPE_CODE_BLOCK_INDENTED;
 }
 
 
@@ -160,10 +180,10 @@ bool block::is_code_block() const
  */
 bool block::is_list() const
 {
-    return f_type.f_char == BLOCK_TYPE_LIST_ASTERISK
-        || f_type.f_char == BLOCK_TYPE_LIST_DASH
-        || f_type.f_char == BLOCK_TYPE_LIST_PERIOD
-        || f_type.f_char == BLOCK_TYPE_LIST_PARENTHESIS;
+    return f_type == BLOCK_TYPE_LIST_ASTERISK
+        || f_type == BLOCK_TYPE_LIST_DASH
+        || f_type == BLOCK_TYPE_LIST_PERIOD
+        || f_type == BLOCK_TYPE_LIST_PARENTHESIS;
 }
 
 
@@ -180,8 +200,8 @@ bool block::is_list() const
  */
 bool block::is_ordered_list() const
 {
-    return f_type.f_char == BLOCK_TYPE_LIST_PERIOD
-        || f_type.f_char == BLOCK_TYPE_LIST_PARENTHESIS;
+    return f_type == BLOCK_TYPE_LIST_PERIOD
+        || f_type == BLOCK_TYPE_LIST_PARENTHESIS;
 }
 
 
@@ -198,8 +218,8 @@ bool block::is_ordered_list() const
  */
 bool block::is_unordered_list() const
 {
-    return f_type.f_char == BLOCK_TYPE_LIST_ASTERISK
-        || f_type.f_char == BLOCK_TYPE_LIST_DASH;
+    return f_type == BLOCK_TYPE_LIST_ASTERISK
+        || f_type == BLOCK_TYPE_LIST_DASH;
 }
 
 
@@ -216,7 +236,7 @@ bool block::is_unordered_list() const
  */
 bool block::is_blockquote() const
 {
-    return f_type.f_char == BLOCK_TYPE_BLOCKQUOTE;
+    return f_type == BLOCK_TYPE_BLOCKQUOTE;
 }
 
 
@@ -232,10 +252,10 @@ bool block::is_blockquote() const
  */
 bool block::is_header() const
 {
-    return f_type.f_char == BLOCK_TYPE_HEADER_OPEN
-        || f_type.f_char == BLOCK_TYPE_HEADER_ENCLOSED
-        || f_type.f_char == BLOCK_TYPE_HEADER_UNDERLINED
-        || f_type.f_char == BLOCK_TYPE_HEADER_DOUBLE;
+    return f_type == BLOCK_TYPE_HEADER_OPEN
+        || f_type == BLOCK_TYPE_HEADER_ENCLOSED
+        || f_type == BLOCK_TYPE_HEADER_UNDERLINED
+        || f_type == BLOCK_TYPE_HEADER_DOUBLE;
 }
 
 
@@ -251,9 +271,24 @@ bool block::is_header() const
  */
 bool block::is_thematic_break() const
 {
-    return f_type.f_char == BLOCK_TYPE_BREAK_DASH
-        || f_type.f_char == BLOCK_TYPE_BREAK_UNDERLINE
-        || f_type.f_char == BLOCK_TYPE_BREAK_ASTERISK;
+    return f_type == BLOCK_TYPE_BREAK_DASH
+        || f_type == BLOCK_TYPE_BREAK_UNDERLINE
+        || f_type == BLOCK_TYPE_BREAK_ASTERISK;
+}
+
+
+/** \brief Check whether this block represents a tag.
+ *
+ * The function checks the type of this block to see whether it represents
+ * a tag or not. If so, it returns true.
+ *
+ * A tag is a set of verbatim HTML strings saved in the block contents.
+ *
+ * \return true if the type is one of the BLOCK_TYPE_TAG.
+ */
+bool block::is_tag() const
+{
+    return f_type == BLOCK_TYPE_TAG;
 }
 
 
@@ -335,6 +370,7 @@ int block::end_column() const
 void block::number(int n)
 {
     if(!is_ordered_list()
+    && !is_blockquote()
     && !is_header())
     {
         throw commonmark_logic_error("number() called on a non-compatible type of block.");
@@ -359,6 +395,7 @@ void block::number(int n)
 int block::number() const
 {
     if(!is_ordered_list()
+    && !is_blockquote()
     && !is_header())
     {
         throw commonmark_logic_error("number() called on a non-compatible type of block.");
@@ -425,6 +462,55 @@ void block::followed_by_an_empty_line(bool followed)
 bool block::followed_by_an_empty_line() const
 {
     return f_followed_by_an_empty_line;
+}
+
+
+/** \brief Save the info string in this block.
+ *
+ * Blocks of code can include an information string. This is that string.
+ * Since it comes from the input, we expect it to be in a character
+ * string (if not add a new function with std::string).
+ *
+ * \note
+ * The function will trim the info string from starting and ending spaces
+ * before saving it.
+ *
+ * \param[in] info  The info string as found in the input document.
+ *
+ * \sa info_string() const
+ */
+void block::info_string(character::string_t const & info)
+{
+    f_info_string.reserve(info.length() * 3);
+    for(auto const & c : info)
+    {
+        f_info_string += c.to_utf8();
+    }
+    f_info_string = snap::trim_string(f_info_string);
+}
+
+
+/** \brief Retrieve the info string.
+ *
+ * The info string is whatever string appearing after the fenced code block
+ * marker. For example:
+ *
+ * \code
+ *     ``` lang:html
+ * \endcode
+ *
+ * the info string is going to be "lang:html". This function will trim
+ * starting and ending spaces.
+ *
+ * \note
+ * Markdown does not spec. the info_string, it only acknowledge that it
+ * exists and how to retrieve it from the source document.
+ *
+ * \return The info string as it is; an empty string by default.
+ */
+std::string const & block::info_string() const
+{
+    return f_info_string;
 }
 
 
@@ -624,6 +710,17 @@ block::pointer_t block::last_child() const
     return f_last_child;
 }
 
+
+std::size_t block::children_size() const
+{
+    std::size_t count(0);
+
+    for(pointer_t b(f_first_child);
+        b != nullptr;
+        b = b->next(), ++count);
+
+    return count;
+}
 
 void block::append(character const & c)
 {

@@ -76,9 +76,9 @@ constexpr char32_t const    CHAR_ZERO = U'0';                       // 0030
 constexpr char32_t const    CHAR_NINE = U'9';                       // 0039
 constexpr char32_t const    CHAR_COLON = U':';                      // 003A
 constexpr char32_t const    CHAR_SEMICOLON = U';';                  // 003B
-constexpr char32_t const    CHAR_LESS = U'<';                       // 003C
+constexpr char32_t const    CHAR_OPEN_ANGLE_BRACKET = U'<';         // 003C
 constexpr char32_t const    CHAR_EQUAL = U'=';                      // 003D
-constexpr char32_t const    CHAR_GREATER = U'>';                    // 003E
+constexpr char32_t const    CHAR_CLOSE_ANGLE_BRACKET = U'>';        // 003E
 constexpr char32_t const    CHAR_QUESTION_MARK = U'?';              // 003F
 constexpr char32_t const    CHAR_AT = U'@';                         // 0040
 constexpr char32_t const    CHAR_OPEN_SQUARE_BRACKET = U'[';        // 005B
@@ -86,7 +86,7 @@ constexpr char32_t const    CHAR_BACKSLASH = U'\\';                 // 005C
 constexpr char32_t const    CHAR_CLOSE_SQUARE_BRACKET = U']';       // 005D
 constexpr char32_t const    CHAR_CIRCUMFLEX = U'^';                 // 005E
 constexpr char32_t const    CHAR_UNDERSCORE = U'_';                 // 005F
-constexpr char32_t const    CHAR_ACUTE = U'`';                      // 0060
+constexpr char32_t const    CHAR_GRAVE = U'`';                      // 0060
 constexpr char32_t const    CHAR_OPEN_CURLY_BRACKET = U'{';         // 007B
 constexpr char32_t const    CHAR_PIPE = U'|';                       // 007C
 constexpr char32_t const    CHAR_CLOSE_CURLY_BRACKET = U'}';        // 007D
@@ -114,35 +114,145 @@ struct character
         }
     }
 
-    bool is_eol() const
+    bool is_ctrl() const // 0x0000 to 0x001F
     {
-        return f_char == CHAR_LINE_FEED;
+        return f_char < CHAR_SPACE;
     }
 
-    bool is_carriage_return() const
-    {
-        return f_char == CHAR_CARRIAGE_RETURN;
-    }
-
-    bool is_eos() const
+    bool is_eos() const // EOS (-1)
     {
         return f_char == libutf8::EOS;
     }
 
-    bool is_tab() const
+    bool is_tab() const // 0x0009
     {
         return f_char == CHAR_TAB;
     }
 
-    bool is_space() const
+    bool is_eol() const // 0x000A
+    {
+        return f_char == CHAR_LINE_FEED;
+    }
+
+    bool is_carriage_return() const // 0x000D
+    {
+        return f_char == CHAR_CARRIAGE_RETURN;
+    }
+
+    bool is_space() const // 0x0020
     {
         return f_char == CHAR_SPACE;
     }
 
-    bool is_blank() const
+    bool is_blank() const // 0x0020 or 0x0009
     {
         return f_char == CHAR_SPACE
             || f_char == CHAR_TAB;
+    }
+
+    bool is_exclamation_mark() const // 0x0021
+    {
+        return f_char == CHAR_EXCLAMATION_MARK;
+    }
+
+    bool is_quote() const // 0x0022
+    {
+        return f_char == CHAR_QUOTE;
+    }
+
+    bool is_hash() const // 0x0023
+    {
+        return f_char == CHAR_HASH;
+    }
+
+    bool is_apostrophe() const // 0x0027
+    {
+        return f_char == CHAR_APOSTROPHE;
+    }
+
+    bool is_dash() const // 0x002D
+    {
+        return f_char == CHAR_DASH;
+    }
+
+    bool is_period() const // 0x002E
+    {
+        return f_char == CHAR_PERIOD;
+    }
+
+    bool is_open_parenthesis() const // 0x0028
+    {
+        return f_char == CHAR_OPEN_PARENTHESIS;
+    }
+
+    bool is_close_parenthesis() const // 0x0029
+    {
+        return f_char == CHAR_CLOSE_PARENTHESIS;
+    }
+
+    bool is_asterisk() const // 0x002A
+    {
+        return f_char == CHAR_ASTERISK;
+    }
+
+    bool is_plus() const // 0x002B
+    {
+        return f_char == CHAR_PLUS;
+    }
+
+    bool is_slash() const // 0x002F
+    {
+        return f_char == CHAR_SLASH;
+    }
+
+    bool is_colon() const // 0x003A
+    {
+        return f_char == CHAR_COLON;
+    }
+
+    bool is_semicolon() const // 0x003B
+    {
+        return f_char == CHAR_SEMICOLON;
+    }
+
+    bool is_open_angle_bracket() const // 0x003C
+    {
+        return f_char == CHAR_OPEN_ANGLE_BRACKET;
+    }
+
+    bool is_equal() const // 0x003D
+    {
+        return f_char == CHAR_EQUAL;
+    }
+
+    bool is_close_angle_bracket() const // 0x003E
+    {
+        return f_char == CHAR_CLOSE_ANGLE_BRACKET;
+    }
+
+    bool is_question_mark() const // 0x003F
+    {
+        return f_char == CHAR_QUESTION_MARK;
+    }
+
+    bool is_open_square_bracket() const // 0x005B
+    {
+        return f_char == CHAR_OPEN_SQUARE_BRACKET;
+    }
+
+    bool is_backslash() const // 0x005C
+    {
+        return f_char == CHAR_BACKSLASH;
+    }
+
+    bool is_close_square_bracket() const // 0x005D
+    {
+        return f_char == CHAR_CLOSE_SQUARE_BRACKET;
+    }
+
+    bool is_grave() const // 0x0060
+    {
+        return f_char == CHAR_GRAVE;
     }
 
     bool is_thematic_break() const
@@ -158,6 +268,13 @@ struct character
             || f_char == CHAR_UNDERSCORE;
     }
 
+    bool is_link_title_open_quote() const
+    {
+        return f_char == CHAR_QUOTE
+            || f_char == CHAR_APOSTROPHE
+            || f_char == CHAR_OPEN_PARENTHESIS;
+    }
+
     bool is_unordered_list_bullet() const
     {
         return f_char == CHAR_DASH
@@ -171,13 +288,85 @@ struct character
             || f_char == CHAR_CLOSE_PARENTHESIS;
     }
 
+    bool is_fenced_code_block() const
+    {
+        return f_char == CHAR_GRAVE
+            || f_char == CHAR_TILDE;
+    }
+
+    bool is_ascii_letter() const
+    {
+        return (f_char >= 'a' && f_char <= 'z')
+            || (f_char >= 'A' && f_char <= 'Z');
+    }
+
+    bool is_first_protocol() const
+    {
+        return is_ascii_letter();
+    }
+
+    bool is_protocol() const
+    {
+        return is_ascii_letter()
+            || is_digit()
+            || f_char == CHAR_PLUS
+            || f_char == CHAR_PERIOD
+            || f_char == CHAR_DASH;
+    }
+
+    bool is_uri() const
+    {
+        return (f_char >= 0x21 && f_char <= 0x3D)
+            || (f_char >= 0x3F && f_char <= 0x7E);
+    }
+
+    bool is_first_tag() const
+    {
+        return is_ascii_letter();
+    }
+
+    bool is_tag() const
+    {
+        return is_ascii_letter()
+            || is_digit()
+            || f_char == CHAR_DASH;
+    }
+
+    bool is_first_attribute() const
+    {
+        return is_ascii_letter()
+            || f_char == CHAR_UNDERSCORE
+            || f_char == CHAR_COLON;
+    }
+
+    bool is_attribute() const
+    {
+        return is_ascii_letter()
+            || is_digit()
+            || f_char == CHAR_DASH
+            || f_char == CHAR_UNDERSCORE
+            || f_char == CHAR_COLON
+            || f_char == CHAR_PERIOD;
+    }
+
+    bool is_attribute_standalone_value() const
+    {
+        return !(is_blank()
+              || f_char == CHAR_QUOTE
+              || f_char == CHAR_APOSTROPHE
+              || f_char == CHAR_EQUAL
+              || f_char == CHAR_OPEN_ANGLE_BRACKET
+              || f_char == CHAR_CLOSE_ANGLE_BRACKET
+              || f_char == CHAR_GRAVE);
+    }
+
     bool is_digit() const
     {
         return f_char >= CHAR_ZERO
             && f_char <= CHAR_NINE;
     }
 
-    bool digit_number() const
+    int digit_number() const
     {
         if(!is_digit())
         {
@@ -193,7 +382,7 @@ struct character
             || (f_char >= 'A' && f_char <= 'F');
     }
 
-    bool hexdigit_number() const
+    int hexdigit_number() const
     {
         if(!is_hexdigit())
         {
@@ -212,51 +401,6 @@ struct character
             return f_char - 'A' + 10;
         }
         snap::NOT_REACHED();
-    }
-
-    bool is_hash() const // 0x0023
-    {
-        return f_char == CHAR_HASH;
-    }
-
-    bool is_dash() const // 0x002D
-    {
-        return f_char == CHAR_DASH;
-    }
-
-    bool is_period() const // 0x002E
-    {
-        return f_char == CHAR_PERIOD;
-    }
-
-    bool is_close_parenthesis() const // 0x0029
-    {
-        return f_char == CHAR_CLOSE_PARENTHESIS;
-    }
-
-    bool is_asterisk() const // 0x002A
-    {
-        return f_char == CHAR_ASTERISK;
-    }
-
-    bool is_plus() const // 0x002B
-    {
-        return f_char == CHAR_PLUS;
-    }
-
-    bool is_semicolon() const // 003B
-    {
-        return f_char == CHAR_SEMICOLON;
-    }
-
-    bool is_greater() const // 003E
-    {
-        return f_char == CHAR_GREATER;
-    }
-
-    bool is_backslash() const // 005C
-    {
-        return f_char == CHAR_BACKSLASH;
     }
 
     bool is_ascii_punctuation() const
@@ -280,9 +424,9 @@ struct character
         case CHAR_SLASH:
         case CHAR_COLON:
         case CHAR_SEMICOLON:
-        case CHAR_LESS:
+        case CHAR_OPEN_ANGLE_BRACKET:
         case CHAR_EQUAL:
-        case CHAR_GREATER:
+        case CHAR_CLOSE_ANGLE_BRACKET:
         case CHAR_QUESTION_MARK:
         case CHAR_AT:
         case CHAR_OPEN_SQUARE_BRACKET:
@@ -290,7 +434,7 @@ struct character
         case CHAR_CLOSE_SQUARE_BRACKET:
         case CHAR_CIRCUMFLEX:
         case CHAR_UNDERSCORE:
-        case CHAR_ACUTE:
+        case CHAR_GRAVE:
         case CHAR_OPEN_CURLY_BRACKET:
         case CHAR_PIPE:
         case CHAR_CLOSE_CURLY_BRACKET:
@@ -346,6 +490,16 @@ struct character
     std::string to_utf8() const
     {
         return libutf8::to_u8string(f_char);
+    }
+
+    static std::string to_utf8(character::string_t const & s)
+    {
+        std::string result;
+        for(auto const & c : s)
+        {
+            result += c.to_utf8();
+        }
+        return result;
     }
 
     char32_t            f_char = CHAR_NULL;

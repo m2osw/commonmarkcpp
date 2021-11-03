@@ -38,6 +38,8 @@ namespace cm
 
 DECLARE_LOGIC_ERROR(commonmark_logic_error);
 
+DECLARE_OUT_OF_RANGE(commonmark_out_of_range);
+
 DECLARE_MAIN_EXCEPTION(commonmark_error);
 
 DECLARE_EXCEPTION(commonmark_error, already_flushed);

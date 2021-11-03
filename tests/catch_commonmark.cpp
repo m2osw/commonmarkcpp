@@ -159,6 +159,9 @@ CATCH_TEST_CASE("commonmark_test_suite", "[test-suite]")
     {
         // TODO: allow for command line to change this path
         //
+        // file found on the commonmark website:
+        //   https://spec.commonmark.org/0.30/
+        //
         snap::file_contents spec("tests/spec.json");
         CATCH_REQUIRE(spec.read_all());
         libutf8::json_tokens json(spec.contents());
@@ -166,7 +169,7 @@ CATCH_TEST_CASE("commonmark_test_suite", "[test-suite]")
         CATCH_REQUIRE(json.next_token() == libutf8::token_t::TOKEN_OPEN_ARRAY);
 
         libutf8::token_t token(json.next_token());
-        for(; ;)
+        for(int count(1); ; ++count)
         {
             CATCH_REQUIRE(token == libutf8::token_t::TOKEN_OPEN_OBJECT);
 
@@ -204,8 +207,10 @@ CATCH_TEST_CASE("commonmark_test_suite", "[test-suite]")
             // run that test
             {
                 cm::commonmark md;
+                md.set_line_feed("\n");
+                md.add_space_in_empty_tag();
 
-                std::cout << "markdown: [";
+                std::cout << "markdown #" << count << ": [";
                 for(auto c : markdown)
                 {
                     // the characters used to show the white spaces are
@@ -238,13 +243,17 @@ CATCH_TEST_CASE("commonmark_test_suite", "[test-suite]")
                 }
                 std::cout << "]\n";
 
+                std::string const result(md.process(markdown));
+
 // while building the parser, a REQUIRE is way more practical as it won't
 // output hundred of errors before stopping the test
 #if 0
-                CATCH_CHECK(md.process(markdown) == html);
+                CATCH_CHECK(result == html);
 #else
-                CATCH_REQUIRE(md.process(markdown) == html);
+                CATCH_REQUIRE(result == html);
 #endif
+                std::cout << " |\n";
+                std::cout << " +---> resulting html: [" << html << "] matched!\n";
             }
 
             token = json.next_token();
@@ -255,7 +264,7 @@ CATCH_TEST_CASE("commonmark_test_suite", "[test-suite]")
 
             token = json.next_token();
         }
-        
+
         CATCH_REQUIRE(token == libutf8::token_t::TOKEN_CLOSE_ARRAY);
         CATCH_REQUIRE(json.next_token() == libutf8::token_t::TOKEN_END);
 

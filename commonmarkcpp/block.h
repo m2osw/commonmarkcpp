@@ -19,10 +19,10 @@
 #pragma once
 
 /** \file
- * \brief Declaration of the commonmark class.
+ * \brief Declaration of the block class.
  *
- * The commonmark is a state machine that accepts Markdown data as input
- * and spits out the corresponding HTML.
+ * A block represents a set of lines organized together in a paragraph,
+ * list, blockquote and other similar objects.
  */
 
 
@@ -49,12 +49,15 @@ namespace cm
 constexpr char32_t const    BLOCK_TYPE_DOCUMENT = U'\x1F5CE'; // document symbol
 constexpr char32_t const    BLOCK_TYPE_LINE = U'\x2104'; // center line symbol
 constexpr char32_t const    BLOCK_TYPE_PARAGRAPH = U'\x00B6'; // paragraph symbol
-constexpr char32_t const    BLOCK_TYPE_CODE_BLOCK = U'\t';
+constexpr char32_t const    BLOCK_TYPE_CODE_BLOCK_INDENTED = U'\t';
+constexpr char32_t const    BLOCK_TYPE_CODE_BLOCK_GRAVE = U'`';
+constexpr char32_t const    BLOCK_TYPE_CODE_BLOCK_TILDE = U'~';
 constexpr char32_t const    BLOCK_TYPE_LIST_ASTERISK = U'*';
 constexpr char32_t const    BLOCK_TYPE_LIST_PLUS = U'+';
 constexpr char32_t const    BLOCK_TYPE_LIST_DASH = U'-';
 constexpr char32_t const    BLOCK_TYPE_LIST_PERIOD = U'.';
 constexpr char32_t const    BLOCK_TYPE_LIST_PARENTHESIS = U')';
+constexpr char32_t const    BLOCK_TYPE_TAG = U'<';
 constexpr char32_t const    BLOCK_TYPE_BLOCKQUOTE = U'>';
 constexpr char32_t const    BLOCK_TYPE_HEADER_OPEN = U'#';
 constexpr char32_t const    BLOCK_TYPE_HEADER_ENCLOSED = U'\x1F157'; // circle enclosed H
@@ -82,12 +85,14 @@ public:
     bool                    is_line() const;
     bool                    is_paragraph() const;
     bool                    is_code_block() const;
+    bool                    is_indented_code_block() const;
     bool                    is_list() const;
     bool                    is_ordered_list() const;
     bool                    is_unordered_list() const;
     bool                    is_blockquote() const;
     bool                    is_header() const;
     bool                    is_thematic_break() const;
+    bool                    is_tag() const;
 
     int                     line() const;
     int                     column() const;
@@ -97,6 +102,8 @@ public:
     int                     number() const;
     void                    followed_by_an_empty_line(bool followed);
     bool                    followed_by_an_empty_line() const;
+    void                    info_string(character::string_t const & info);
+    std::string const &     info_string() const;
 
     void                    link_child(pointer_t child);
     void                    link_sibling(pointer_t sibling);
@@ -107,6 +114,7 @@ public:
     pointer_t               parent() const;
     pointer_t               first_child() const;
     pointer_t               last_child() const;
+    std::size_t             children_size() const;
 
     void                    append(character const & c);
     void                    append(character::string_t const & content);
@@ -123,6 +131,7 @@ private:
     character const         f_type;
     int                     f_end_column = 0;
     character::string_t     f_content = character::string_t();
+    std::string             f_info_string = std::string();
     int                     f_number = -1;
     bool                    f_followed_by_an_empty_line = false;
 };
