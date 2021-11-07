@@ -195,8 +195,8 @@ CATCH_TEST_CASE("character", "[test-suite]")
             {
                 CATCH_REQUIRE_FALSE(c.is_thematic_break());
             }
-            if(p == '-'
-            || p == '_')
+            if(p == '='
+            || p == '-')
             {
                 CATCH_REQUIRE(c.is_setext());
             }

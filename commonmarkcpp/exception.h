@@ -43,7 +43,7 @@ DECLARE_OUT_OF_RANGE(commonmark_out_of_range);
 DECLARE_MAIN_EXCEPTION(commonmark_error);
 
 DECLARE_EXCEPTION(commonmark_error, already_flushed);
-//DECLARE_EXCEPTION(commonmark_error, duplicate_error);
+DECLARE_EXCEPTION(commonmark_error, unexpected_null_pointer);
 //DECLARE_EXCEPTION(commonmark_error, invalid_variable);
 //DECLARE_EXCEPTION(commonmark_error, invalid_parameter);
 //DECLARE_EXCEPTION(commonmark_error, invalid_severity);

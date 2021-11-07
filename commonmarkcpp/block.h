@@ -61,13 +61,15 @@ constexpr char32_t const    BLOCK_TYPE_TAG = U'<';
 constexpr char32_t const    BLOCK_TYPE_BLOCKQUOTE = U'>';
 constexpr char32_t const    BLOCK_TYPE_HEADER_OPEN = U'#';
 constexpr char32_t const    BLOCK_TYPE_HEADER_ENCLOSED = U'\x1F157'; // circle enclosed H
-constexpr char32_t const    BLOCK_TYPE_HEADER_UNDERLINED = U'_';
+constexpr char32_t const    BLOCK_TYPE_HEADER_SINGLE = U'_'; // source is '-', but '-' is used for lists
 constexpr char32_t const    BLOCK_TYPE_HEADER_DOUBLE = U'=';
 constexpr char32_t const    BLOCK_TYPE_BREAK_DASH = U'\x2022';
 constexpr char32_t const    BLOCK_TYPE_BREAK_ASTERISK = U'\x2023';
 constexpr char32_t const    BLOCK_TYPE_BREAK_UNDERLINE = U'\x2024';
 
 
+
+std::string                 type_to_string(char32_t type);
 
 
 
@@ -90,6 +92,8 @@ public:
     bool                    is_ordered_list() const;
     bool                    is_unordered_list() const;
     bool                    is_blockquote() const;
+    bool                    is_in_blockquote() const;
+    pointer_t               find_blockquote() const;
     bool                    is_header() const;
     bool                    is_thematic_break() const;
     bool                    is_tag() const;
@@ -103,7 +107,8 @@ public:
     void                    followed_by_an_empty_line(bool followed);
     bool                    followed_by_an_empty_line() const;
     void                    info_string(character::string_t const & info);
-    std::string const &     info_string() const;
+    character::string_t const &
+                            info_string() const;
 
     void                    link_child(pointer_t child);
     void                    link_sibling(pointer_t sibling);
@@ -121,6 +126,9 @@ public:
     character::string_t const &
                             content() const;
 
+    std::string             tree() const;
+    std::string             to_string(int indentation = 0, bool children = false) const;
+
 private:
     pointer_t               f_next = pointer_t();
     weak_t                  f_previous = weak_t();
@@ -129,9 +137,9 @@ private:
     pointer_t               f_last_child = pointer_t();
 
     character const         f_type;
-    int                     f_end_column = 0;
+    std::uint32_t           f_end_column = 0;
     character::string_t     f_content = character::string_t();
-    std::string             f_info_string = std::string();
+    character::string_t     f_info_string = character::string_t();
     int                     f_number = -1;
     bool                    f_followed_by_an_empty_line = false;
 };

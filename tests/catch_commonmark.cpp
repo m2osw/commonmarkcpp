@@ -47,73 +47,114 @@ CATCH_TEST_CASE("commonmark_thematic_breaks", "[direct-test][block]")
 {
     CATCH_START_SECTION("cm: test \"***\" -> <hr/>")
     {
+        cm::features f;
+        f.set_add_document_div();
+        f.set_add_classes();
         cm::commonmark md;
-        md.add_document_div();
-        md.add_classes();
+        md.set_features(f);
         CATCH_REQUIRE(md.process("***") == "<div class=\"cm-document\"><hr class=\"cm-break-asterisk\"/></div>");
+    }
+    CATCH_END_SECTION()
+
+    CATCH_START_SECTION("cm: test \"***\" -> <hr /> (with a space)")
+    {
+        cm::features f;
+        f.set_add_document_div();
+        f.set_add_classes();
+        f.set_add_space_in_empty_tag();
+        cm::commonmark md;
+        md.set_features(f);
+        CATCH_REQUIRE(md.process("***") == "<div class=\"cm-document\"><hr class=\"cm-break-asterisk\" /></div>");
+    }
+    CATCH_END_SECTION()
+
+    CATCH_START_SECTION("cm: test \"***\" -> <hr /> (space & no class)")
+    {
+        cm::features f;
+        f.set_add_document_div();
+        f.set_add_space_in_empty_tag();
+        cm::commonmark md;
+        md.set_features(f);
+        CATCH_REQUIRE(md.process("***") == "<div><hr /></div>");
     }
     CATCH_END_SECTION()
 
     CATCH_START_SECTION("cm: test \"***\\n\" -> <hr/>")
     {
+        cm::features f;
+        f.set_add_classes();
         cm::commonmark md;
-        md.add_classes();
+        md.set_features(f);
         CATCH_REQUIRE(md.process("***\n") == "<hr class=\"cm-break-asterisk\"/>");
     }
     CATCH_END_SECTION()
 
     CATCH_START_SECTION("cm: test \"   ***\\r\\n\" -> <hr/>")
     {
+        cm::features f;
+        f.set_add_classes();
         cm::commonmark md;
-        md.add_classes();
+        md.set_features(f);
         CATCH_REQUIRE(md.process("   ***\r\n") == "<hr class=\"cm-break-asterisk\"/>");
     }
     CATCH_END_SECTION()
 
     CATCH_START_SECTION("cm: test \"---\" -> <hr/>")
     {
+        cm::features f;
+        f.set_add_classes();
         cm::commonmark md;
-        md.add_classes();
+        md.set_features(f);
         CATCH_REQUIRE(md.process("---") == "<hr class=\"cm-break-dash\"/>");
     }
     CATCH_END_SECTION()
 
     CATCH_START_SECTION("cm: test \"  ---\\n\" -> <hr/>")
     {
+        cm::features f;
+        f.set_add_classes();
         cm::commonmark md;
-        md.add_classes();
+        md.set_features(f);
         CATCH_REQUIRE(md.process("  ---\n") == "<hr class=\"cm-break-dash\"/>");
     }
     CATCH_END_SECTION()
 
     CATCH_START_SECTION("cm: test \"---\\r\\n\" -> <hr/>")
     {
+        cm::features f;
+        f.set_add_classes();
         cm::commonmark md;
-        md.add_classes();
+        md.set_features(f);
         CATCH_REQUIRE(md.process("---\r\n") == "<hr class=\"cm-break-dash\"/>");
     }
     CATCH_END_SECTION()
 
     CATCH_START_SECTION("cm: test \" ___\" -> <hr/>")
     {
+        cm::features f;
+        f.set_add_classes();
         cm::commonmark md;
-        md.add_classes();
+        md.set_features(f);
         CATCH_REQUIRE(md.process(" ___") == "<hr class=\"cm-break-underline\"/>");
     }
     CATCH_END_SECTION()
 
     CATCH_START_SECTION("cm: test \"___ \\t\\n\" -> <hr/>")
     {
+        cm::features f;
+        f.set_add_classes();
         cm::commonmark md;
-        md.add_classes();
+        md.set_features(f);
         CATCH_REQUIRE(md.process("___ \t\n") == "<hr class=\"cm-break-underline\"/>");
     }
     CATCH_END_SECTION()
 
     CATCH_START_SECTION("cm: test \"_ _ _\\r\\n\" -> <hr/>")
     {
+        cm::features f;
+        f.set_add_classes();
         cm::commonmark md;
-        md.add_classes();
+        md.set_features(f);
         CATCH_REQUIRE(md.process("_ _ _\r\n") == "<hr class=\"cm-break-underline\"/>");
     }
     CATCH_END_SECTION()
@@ -124,30 +165,34 @@ CATCH_TEST_CASE("commonmark_atx_heading", "[direct-test][block]")
 {
     CATCH_START_SECTION("cm: test \"#... ...\" -> <hN/>")
     {
+        cm::features f;
+        f.set_add_classes();
         cm::commonmark md;
-        md.add_classes();
+        md.set_features(f);
         CATCH_REQUIRE(md.process("# H1\n## H2\n### H3\n#### H4\n##### H5\n###### H6\n")
-                == "<h1 class=\"cm-open\">H1</h1>"
-                   "<h2 class=\"cm-open\">H2</h2>"
-                   "<h3 class=\"cm-open\">H3</h3>"
-                   "<h4 class=\"cm-open\">H4</h4>"
-                   "<h5 class=\"cm-open\">H5</h5>"
-                   "<h6 class=\"cm-open\">H6</h6>");
+                == "<h1 class=\"cm-header-open\">H1</h1>"
+                   "<h2 class=\"cm-header-open\">H2</h2>"
+                   "<h3 class=\"cm-header-open\">H3</h3>"
+                   "<h4 class=\"cm-header-open\">H4</h4>"
+                   "<h5 class=\"cm-header-open\">H5</h5>"
+                   "<h6 class=\"cm-header-open\">H6</h6>");
     }
     CATCH_END_SECTION()
 
     CATCH_START_SECTION("cm: test \"#... ... #...\" -> <hN/>")
     {
+        cm::features f;
+        f.set_add_classes();
         cm::commonmark md;
-        md.add_classes();
+        md.set_features(f);
         CATCH_REQUIRE(md.process("# H1 # # #\n## H2 #\t#\t#\n### H3 ###   \n"
             "#### H4 ########## #########\n##### H5 ##\n###### H6 # \t \t\n")
-                == "<h1 class=\"cm-enclosed\">H1 # #</h1>"
-                   "<h2 class=\"cm-enclosed\">H2 #\t#</h2>"
-                   "<h3 class=\"cm-enclosed\">H3</h3>"
-                   "<h4 class=\"cm-enclosed\">H4 ##########</h4>"
-                   "<h5 class=\"cm-enclosed\">H5</h5>"
-                   "<h6 class=\"cm-enclosed\">H6</h6>");
+                == "<h1 class=\"cm-header-enclosed\">H1 # #</h1>"
+                   "<h2 class=\"cm-header-enclosed\">H2 #\t#</h2>"
+                   "<h3 class=\"cm-header-enclosed\">H3</h3>"
+                   "<h4 class=\"cm-header-enclosed\">H4 ##########</h4>"
+                   "<h5 class=\"cm-header-enclosed\">H5</h5>"
+                   "<h6 class=\"cm-header-enclosed\">H6</h6>");
     }
     CATCH_END_SECTION()
 }
@@ -206,9 +251,10 @@ CATCH_TEST_CASE("commonmark_test_suite", "[test-suite]")
 
             // run that test
             {
+                cm::features f;
+                f.set_commonmark_compatible();
                 cm::commonmark md;
-                md.set_line_feed("\n");
-                md.add_space_in_empty_tag();
+                md.set_features(f);
 
                 std::cout << "markdown #" << count << ": [";
                 for(auto c : markdown)

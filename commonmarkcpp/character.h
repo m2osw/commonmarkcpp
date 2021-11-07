@@ -39,11 +39,13 @@
 
 // snapdev lib
 //
+#include    <snapdev/hexadecimal_string.h>
 #include    <snapdev/not_reached.h>
 
 
 // C++ lib
 //
+#include    <cwctype>
 #include    <iostream>
 
 
@@ -265,7 +267,7 @@ struct character
     bool is_setext() const
     {
         return f_char == CHAR_DASH
-            || f_char == CHAR_UNDERSCORE;
+            || f_char == CHAR_EQUAL;
     }
 
     bool is_link_title_open_quote() const
@@ -360,6 +362,72 @@ struct character
               || f_char == CHAR_GRAVE);
     }
 
+    bool is_left_flanking(character const & previous) const
+    {
+
+// A left-flanking delimiter run is a delimiter run that is
+// (1) not followed by Unicode whitespace, and either
+// (2a) not followed by a Unicode punctuation character, or
+// (2b) followed by a Unicode punctuation character and preceded
+// by Unicode whitespace or a Unicode punctuation character.
+// For purposes of this definition, the beginning and the end of
+// the line count as Unicode whitespace.
+
+        if(std::iswspace(f_char))
+        {
+            return false;
+        }
+
+        if(!std::iswpunct(f_char))
+        {
+            return true;
+        }
+
+        if(!previous.is_null()
+        && !std::iswspace(previous.f_char)
+        && !std::iswpunct(previous.f_char))
+        {
+            return false;
+        }
+
+        return true;
+    }
+
+    bool is_right_flanking(character const & previous) const
+    {
+
+// A right-flanking delimiter run is a delimiter run that is:
+//
+//  (1) not preceded by Unicode whitespace, and either
+// (2a) not preceded by a Unicode punctuation character, or
+// (2b) preceded by a Unicode punctuation character and followed by
+//      Unicode whitespace or a Unicode punctuation character.
+//
+// For purposes of this definition, the beginning and the end of the
+// line count as Unicode whitespace.
+//
+// -- in our case `this` represents the character after the mark
+// -- and `previous` represents the character just before the mark
+
+        // if previous is a null character, then we're at the start of a
+        // paragraph which doesn't make sense for a right flanking so
+        // it's obviously not one of those in that case
+        //
+        if(previous.is_null()
+        || std::iswspace(previous.f_char))
+        {
+            return false;
+        }
+
+        if(std::iswpunct(previous.f_char))
+        {
+            return std::iswspace(f_char)
+                || std::iswpunct(f_char);
+        }
+
+        return true;
+    }
+
     bool is_digit() const
     {
         return f_char >= CHAR_ZERO
@@ -384,23 +452,24 @@ struct character
 
     int hexdigit_number() const
     {
-        if(!is_hexdigit())
-        {
-            throw commonmark_logic_error("hexdigit_number() called with an invalid hexadecimal-digit");
-        }
-        if(f_char >= CHAR_ZERO && f_char <= CHAR_NINE)
-        {
-            return f_char - CHAR_ZERO;
-        }
-        if(f_char >= 'a' && f_char <= 'f')
-        {
-            return f_char - 'a' + 10;
-        }
-        //if(f_char >= 'A' && f_char <= 'F') -- we already know it is an hexdigit
-        {
-            return f_char - 'A' + 10;
-        }
-        snap::NOT_REACHED();
+        return snap::hexdigit_to_number(f_char);
+        //if(!is_hexdigit())
+        //{
+        //    throw commonmark_logic_error("hexdigit_number() called with an invalid hexadecimal-digit");
+        //}
+        //if(f_char >= CHAR_ZERO && f_char <= CHAR_NINE)
+        //{
+        //    return f_char - CHAR_ZERO;
+        //}
+        //if(f_char >= 'a' && f_char <= 'f')
+        //{
+        //    return f_char - 'a' + 10;
+        //}
+        ////if(f_char >= 'A' && f_char <= 'F') -- we already know it is an hexdigit
+        //{
+        //    return f_char - 'A' + 10;
+        //}
+        //snap::NOT_REACHED();
     }
 
     bool is_ascii_punctuation() const
@@ -502,10 +571,24 @@ struct character
         return result;
     }
 
+    static character::string_t to_character_string(std::string const & s)
+    {
+        character::string_t result;
+
+        std::u32string const u32(libutf8::to_u32string(s));
+        for(auto const & ch : u32)
+        {
+            character c;
+            c.f_char = ch;
+            result += c;
+        }
+
+        return result;
+    }
+
     char32_t            f_char = CHAR_NULL;
     std::uint32_t       f_line = 0;
     std::uint32_t       f_column = 0;
-    //std::uint32_t       f_flags = 0;
 };
 
 

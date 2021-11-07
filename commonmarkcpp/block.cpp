@@ -57,6 +57,81 @@ namespace cm
 
 
 
+std::string type_to_string(char32_t type)
+{
+    switch(type)
+    {
+    case BLOCK_TYPE_DOCUMENT:
+        return "DOCUMENT";
+
+    case BLOCK_TYPE_LINE:
+        return "LINE";
+
+    case BLOCK_TYPE_PARAGRAPH:
+        return "PARAGRAPH";
+
+    case BLOCK_TYPE_CODE_BLOCK_INDENTED:
+        return "CODE_BLOCK_INDENTED";
+
+    case BLOCK_TYPE_CODE_BLOCK_GRAVE:
+        return "CODE_BLOCK_GRAVE";
+
+    case BLOCK_TYPE_CODE_BLOCK_TILDE:
+        return "CODE_BLOCK_TILDE";
+
+    case BLOCK_TYPE_LIST_ASTERISK:
+        return "LIST_ASTERISK";
+
+    case BLOCK_TYPE_LIST_PLUS:
+        return "LIST_PLUS";
+
+    case BLOCK_TYPE_LIST_DASH:
+        return "LIST_DASH";
+
+    case BLOCK_TYPE_LIST_PERIOD:
+        return "LIST_PERIOD";
+
+    case BLOCK_TYPE_LIST_PARENTHESIS:
+        return "LIST_PARENTHESIS";
+
+    case BLOCK_TYPE_TAG:
+        return "TAG";
+
+    case BLOCK_TYPE_BLOCKQUOTE:
+        return "BLOCKQUOTE";
+
+    case BLOCK_TYPE_HEADER_OPEN:
+        return "HEADER_OPEN";
+
+    case BLOCK_TYPE_HEADER_ENCLOSED:
+        return "HEADER_ENCLOSED";
+
+    case BLOCK_TYPE_HEADER_SINGLE:
+        return "HEADER_SINGLE";
+
+    case BLOCK_TYPE_HEADER_DOUBLE:
+        return "HEADER_DOUBLE";
+
+    case BLOCK_TYPE_BREAK_DASH:
+        return "BREAK_DASH";
+
+    case BLOCK_TYPE_BREAK_ASTERISK:
+        return "BREAK_ASTERISK";
+
+    case BLOCK_TYPE_BREAK_UNDERLINE:
+        return "BREAK_UNDERLINE";
+
+    default:
+        return "<unknown type>";
+
+    }
+    snap::NOT_REACHED();
+}
+
+
+
+
+
 /** \brief Initialize the block.
  *
  * The constructor creates a block of the given type. The type of a block
@@ -240,6 +315,54 @@ bool block::is_blockquote() const
 }
 
 
+/** \brief Check whether this block or one of its parent is a blockquote.
+ *
+ * The function checks the type of this block to see whether it represents
+ * a blockquote. If not, then it tries again with its parent. It repeats
+ * so until the parent is nullptr. If any of the blocks was a blockquote,
+ * then the function returns true.
+ *
+ * \return true if block is a blockquote or at least one of the parents
+ * is a blockquote.
+ */
+bool block::is_in_blockquote() const
+{
+    if(is_blockquote())
+    {
+        return true;
+    }
+
+    for(block::pointer_t p(parent()); p != nullptr; p = p->parent())
+    {
+        if(p->is_blockquote())
+        {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+
+block::pointer_t block::find_blockquote() const
+{
+    if(is_blockquote())
+    {
+        return const_cast<block *>(this)->shared_from_this();
+    }
+
+    for(block::pointer_t p(parent()); p != nullptr; p = p->parent())
+    {
+        if(p->is_blockquote())
+        {
+            return p;
+        }
+    }
+
+    return block::pointer_t();
+}
+
+
 /** \brief Check whether this block represents a header.
  *
  * The function checks the type of this block to see whether it represents
@@ -254,7 +377,7 @@ bool block::is_header() const
 {
     return f_type == BLOCK_TYPE_HEADER_OPEN
         || f_type == BLOCK_TYPE_HEADER_ENCLOSED
-        || f_type == BLOCK_TYPE_HEADER_UNDERLINED
+        || f_type == BLOCK_TYPE_HEADER_SINGLE
         || f_type == BLOCK_TYPE_HEADER_DOUBLE;
 }
 
@@ -373,7 +496,10 @@ void block::number(int n)
     && !is_blockquote()
     && !is_header())
     {
-        throw commonmark_logic_error("number() called on a non-compatible type of block.");
+        throw commonmark_logic_error(
+              "number(int) called on a non-compatible type of block ("
+            +  type_to_string(f_type.f_char)
+            + ").");
     }
 
     f_number = n;
@@ -398,7 +524,10 @@ int block::number() const
     && !is_blockquote()
     && !is_header())
     {
-        throw commonmark_logic_error("number() called on a non-compatible type of block.");
+        throw commonmark_logic_error(
+              "number() called on a non-compatible type of block ("
+            + type_to_string(f_type.f_char)
+            + ").");
     }
 
     return f_number;
@@ -481,18 +610,13 @@ bool block::followed_by_an_empty_line() const
  */
 void block::info_string(character::string_t const & info)
 {
-    f_info_string.reserve(info.length() * 3);
-    for(auto const & c : info)
-    {
-        f_info_string += c.to_utf8();
-    }
-    f_info_string = snap::trim_string(f_info_string);
+    f_info_string = info;
 }
 
 
 /** \brief Retrieve the info string.
  *
- * The info string is whatever string appearing after the fenced code block
+ * The info string is whatever string appears after the fenced code block
  * marker. For example:
  *
  * \code
@@ -502,13 +626,26 @@ void block::info_string(character::string_t const & info)
  * the info string is going to be "lang:html". This function will trim
  * starting and ending spaces.
  *
- * \note
- * Markdown does not spec. the info_string, it only acknowledge that it
- * exists and how to retrieve it from the source document.
+ * Note that the commonmark specification does not specify what the
+ * info_string is expected to be. It only acknowledge that it exists
+ * and how to retrieve it from the source document.
+ *
+ * But at the same time they have examples where they convert the first
+ * part of the info string (up to the first space) into a language name
+ * as follow:
+ *
+ * \code
+ *     ``` ruby
+ *     ... ruby code ...
+ *     ```
+ * \endcode
+ *
+ * I that example, it converts the word `ruby` in a `class="language-ruby"`
+ * of the code tag.
  *
  * \return The info string as it is; an empty string by default.
  */
-std::string const & block::info_string() const
+character::string_t const & block::info_string() const
 {
     return f_info_string;
 }
@@ -740,7 +877,182 @@ character::string_t const & block::content() const
 }
 
 
+std::string block::tree() const
+{
+    return to_string(0, true);
+}
+
+
+std::string block::to_string(int indentation, bool children) const
+{
+    std::string indent(indentation, ' ');
+    std::string output;
+
+    output += indent;
+    output += "+ ";
+    output += type_to_string(f_type.f_char);
+    if(f_type.f_line != 0
+    && f_type.f_column != 0)
+    {
+        output += " (line/column: ";
+        output += std::to_string(f_type.f_line);
+        output += '/';
+        output += std::to_string(f_type.f_column);
+        if(f_end_column > f_type.f_column)
+        {
+            output += '-';
+            output += std::to_string(f_end_column);
+        }
+        output += ')';
+    }
+    output += "\n";
+
+    pointer_t pr(previous());
+    pointer_t up(parent());
+
+    if(f_next != nullptr
+    || pr != nullptr
+    || up != nullptr
+    || f_first_child != nullptr)
+    {
+        output += indent;
+        output += "  - ";
+        bool first(true);
+        if(f_next != nullptr)
+        {
+            if(first)
+            {
+                first = false;
+            }
+            else
+            {
+                output += ", ";
+            }
+            output += "Next Sibling (";
+            output += type_to_string(f_next->f_type.f_char);
+            output += ')';
+        }
+        if(pr != nullptr)
+        {
+            if(first)
+            {
+                first = false;
+            }
+            else
+            {
+                output += ", ";
+            }
+            output += "Previous Sibling (";
+            output += type_to_string(pr->f_type.f_char);
+            output += ')';
+        }
+        if(up != nullptr)
+        {
+            if(first)
+            {
+                first = false;
+            }
+            else
+            {
+                output += ", ";
+            }
+            output += "Parent (";
+            output += type_to_string(up->f_type.f_char);
+            output += ')';
+        }
+        if(f_first_child != nullptr)
+        {
+            if(first)
+            {
+                first = false;
+            }
+            else
+            {
+                output += ", ";
+            }
+            output += "Has Children (First: ";
+            output += type_to_string(f_first_child->f_type.f_char);
+            if(f_first_child != f_last_child)
+            {
+                output += ", Last: ";
+                output += type_to_string(f_last_child->f_type.f_char);
+            }
+            output += ", Count: ";
+            output += std::to_string(children_size());
+            output += ')';
+        }
+        output += '\n';
+    }
+
+    if(!f_content.empty())
+    {
+        output += indent;
+        std::string const intro("  - Content: \"");
+        output += intro;
+        std::string const content(character::to_utf8(f_content));
+        std::size_t const limit(std::max(20UL, 77 - intro.length() - indent.length()));
+        if(limit >= content.length())
+        {
+            output += content;
+        }
+        else
+        {
+            std::string const more(" [...]");
+            output += content.substr(0, limit - more.length());
+            output += more;
+        }
+        output += "\"\n";
+    }
+
+    if(!f_info_string.empty())
+    {
+        output += indent;
+        std::string const info_intro("  - String Info: \"");
+        output += info_intro;
+        std::string const info_string(character::to_utf8(f_info_string));
+        std::size_t const info_limit(std::max(20UL, 77 - info_intro.length() - indent.length()));
+        if(info_limit >= info_string.length())
+        {
+            output += info_string;
+        }
+        else
+        {
+            std::string const more(" [...]");
+            output += info_string.substr(0, info_limit - more.length());
+            output += more;
+        }
+        output += "\"\n";
+    }
+
+    if(f_number >= 0)
+    {
+        output += indent;
+        output += "  - Number: ";
+        output += std::to_string(f_number);
+        output += '\n';
+    }
+
+    if(f_followed_by_an_empty_line)
+    {
+        output += indent;
+        output += "  - Block is followed by at least one empty line\n";
+    }
+
+    if(children)
+    {
+        for(auto b(f_first_child);
+            b != nullptr;
+            b = b->f_next)
+        {
+            output += b->to_string(indentation + 2, true);
+        }
+    }
+
+    return output;
+}
+
+
+
 
 } // namespace cm
 // vim: ts=4 sw=4 et
-

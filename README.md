@@ -38,6 +38,14 @@ In the following sentence "other" should be followe by "than":
 
 Also "space" could be plural.
 
+## Setext (Section 4.3)
+
+The Setext and Example 46 are contradictory. The `"--"` is cleared added
+to the paragraph and therefore is clearly viewed as a valid paragraph
+entry. However, the example is then adding `"**"` which can be viewed
+as an Setext marker and yet the example outputs it as a normal paragraph
+entry.
+
 
 # License
 
