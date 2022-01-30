@@ -86,15 +86,32 @@ constexpr int mark_and_count(char32_t c, int count)
 
 
 bool parse_link_text(
-      character::string_t line
+      character::string_t const & line
     , character::string_t::const_iterator & et
-    , std::string & link_text)
+    , std::string & link_text
+    , std::function<void()> get_line)
 {
     int inner_bracket(1);
     bool start(true);
     bool inside_inline_code(false);
-    for(++et; et != line.cend(); ++et)
+    for(++et; ; ++et)
     {
+        if(et == line.cend())
+        {
+            if(get_line == nullptr)
+            {
+                break;
+            }
+            get_line();
+            et = line.cbegin();
+            if(et == line.cend())
+            {
+                // empty lines are not allowed
+                //
+                break;
+            }
+        }
+
         switch(et->f_char)
         {
         case CHAR_SPACE:
@@ -167,18 +184,20 @@ bool parse_link_text(
 
 bool parse_link_destination(
       character::string_t line
-    , character::string_t::const_iterator & et
+    , character::string_t::const_iterator & it
     , std::string & link_destination
     , std::string & link_title)
 {
     // inline link destination has to have an open parenthesis
     //
-    if(et == line.cend()
-    || !et->is_open_parenthesis())
+    if(it == line.cend()
+    || !it->is_open_parenthesis())
     {
         return false;
     }
 std::cerr << " >>> destination -- got '('\n";
+
+    character::string_t::const_iterator et(it);
 
     // skip the '('
     //
@@ -321,6 +340,7 @@ std::cerr << " >>> destination -- closing parenthesis?\n";
     if(et->is_close_parenthesis())
     {
         ++et;
+        it = et;
         link_destination = destination;
         link_title = title;
         return true;
@@ -575,8 +595,13 @@ std::string generate_attribute(
                 --it;
                 result += '\\';
             }
+            else if(it->is_ascii_punctuation())
+            {
+                result += it->to_utf8();
+            }
             else
             {
+                result += '\\';
                 result += it->to_utf8();
             }
             break;
@@ -628,8 +653,8 @@ std::string convert_uri(character::string_t const & uri)
         case '$':       // 24
         case '&':       // 26
         case '\'':      // 27
-        case '(':       // 28
-        case ')':       // 29
+        //case '(':       // 28
+        //case ')':       // 29
         case '+':       // 2B
         case ',':       // 2C
         //case '/':       // 2F -- this should be done in the query string
@@ -650,7 +675,7 @@ std::string convert_uri(character::string_t const & uri)
         case '~':       // 7E
         case '`':       // 60
             result += "%";
-            result += snap::int_to_hex(
+            result += snapdev::int_to_hex(
                               static_cast<std::uint8_t>(c->f_char)
                             , true
                             , 2);
@@ -662,11 +687,11 @@ std::string convert_uri(character::string_t const & uri)
             //
             ++c;
             if(c != uri.end()
-            && snap::is_hexdigit(c->f_char))
+            && snapdev::is_hexdigit(c->f_char))
             {
                 ++c;
                 if(c != uri.end()
-                && snap::is_hexdigit(c->f_char))
+                && snapdev::is_hexdigit(c->f_char))
                 {
                     result += '%';
                     result += static_cast<char>(c[-1].f_char);
@@ -682,15 +707,15 @@ std::string convert_uri(character::string_t const & uri)
         default:
             {
 std::cerr << "convert character: " << static_cast<int>(c->f_char) << "\n";
-                std::string u(c->to_utf8());
-                for(auto nc : u)
+                std::string const u(c->to_utf8());
+                for(auto const & nc : u)
                 {
                     if(static_cast<unsigned  char>(nc) >= 0x80)
                     {
                         // upper UTF-8 codes are all encoded
                         //
                         result += '%';
-                        result += snap::int_to_hex(nc, true, 2);
+                        result += snapdev::int_to_hex(nc, true, 2);
                     }
                     else
                     {
@@ -703,6 +728,7 @@ std::cerr << "convert character: " << static_cast<int>(c->f_char) << "\n";
         }
     }
 
+std::cerr << "URI converted: " << result << "\n";
     return result;
 }
 
@@ -719,13 +745,20 @@ enum class state_t
 };
 
 bool verify_tag_attributes(
-      character::string_t line
+      character::string_t const & line
     , character::string_t::const_iterator & et)
 {
     state_t state(state_t::STATE_NAME_OR_END);
     for(;;)
     {
-std::cerr << " ---- tag innards state: " << static_cast<int>(state) << "...\n";
+void const * it_ptr(reinterpret_cast<void const *>(&*et));
+if(it_ptr < reinterpret_cast<void const *>(&*line.cbegin())
+|| it_ptr > reinterpret_cast<void const *>(&*line.cend()))
+{
+    throw commonmark_logic_error("invalid it from verify_tag_attributes()?");
+}
+std::cerr << " ---- tag innards state: " << static_cast<int>(state)
+<< " for [" << character::string_t(et, line.cend()) << "]...\n";
 
         if(et == line.cend())
         {
@@ -875,15 +908,6 @@ std::cerr << " ---- tag innards invalid attribute value\n";
 
 
 
-commonmark::input_status_t::input_status_t(
-          libutf8::utf8_iterator & iterator
-        , std::uint32_t line
-        , std::uint32_t column)
-    : f_iterator(iterator)
-    , f_line(line)
-    , f_column(column)
-{
-}
 
 
 
@@ -947,12 +971,38 @@ void commonmark::add_link(
     , std::string const & title
     , bool reference)
 {
+    // TODO: once the libutf8 supports proper Unicode case folding
+    //       we have to remove these since the map will properly
+    //       support case insensitive strings
+    //
+    std::u32string lower(libutf8::to_u32string(name));
+    for(auto & c : lower)
+    {
+        if(c >= U'A' && c <= U'Z')
+        {
+            c |= 0x20;
+        }
+        else if(c == U'Α')   // Greek needs help which we don't yet have in libutf8 (it was started...) to pass the tests I do this which is terribly ugly...
+        {
+            c = U'α';
+        }
+        else if(c == U'Γ')
+        {
+            c = U'γ';
+        }
+        else if(c == U'Ω')
+        {
+            c = U'ω';
+        }
+    }
+    std::string lname(libutf8::to_u8string(lower));
+
     link::pointer_t l;
-    auto const it(f_links.find(name));
+    auto const it(f_links.find(lname));
     if(it == f_links.end())
     {
         l = std::make_shared<link>(name);
-        f_links[name] = l;
+        f_links[lname] = l;
     }
     else
     {
@@ -984,7 +1034,34 @@ void commonmark::add_link(
  */
 link::pointer_t commonmark::find_link_reference(std::string const & name)
 {
-    auto it(f_links.find(name));
+    // TODO: once the libutf8 supports proper Unicode case folding
+    //       we have to remove these since the map will properly
+    //       support case insensitive strings
+    //
+    std::u32string lower(libutf8::to_u32string(name));
+    for(auto & c : lower)
+    {
+        if(c >= U'A' && c <= U'Z')
+        {
+            c |= 0x20;
+        }
+        else if(c == U'Α')   // Greek needs help which we don't yet have in libutf8 (it was started...) to pass the tests I do this which is terribly ugly...
+        {
+            c = U'α';
+        }
+        else if(c == U'Γ')
+        {
+            c = U'γ';
+        }
+        else if(c == U'Ω')
+        {
+            c = U'ω';
+        }
+    }
+    std::string lname(libutf8::to_u8string(lower));
+std::cerr << " --- ref: search for link named [" << lname << "]\n";
+
+    auto it(f_links.find(lname));
     if(it == f_links.end())
     {
         return link::pointer_t();
@@ -1147,8 +1224,12 @@ void commonmark::get_line()
 
 commonmark::input_status_t commonmark::get_current_status()
 {
-    input_status_t const status(f_iterator, f_line, f_column);
-    return status;
+    return input_status_t{
+            f_iterator,
+            f_line,
+            f_column,
+            f_last_line,
+        };
 }
 
 
@@ -1157,6 +1238,7 @@ void commonmark::restore_status(input_status_t const & status)
     f_iterator = status.f_iterator;
     f_line = status.f_line;
     f_column = status.f_column;
+    f_last_line = status.f_last_line;
 }
 
 
@@ -1264,25 +1346,43 @@ std::cerr << "any containers (other than line)? "
 << " -- it position: "
 << it - f_last_line.cbegin()
 << "\n";
-        if(f_working_block->is_line()
-        && it == f_last_line.cend())
+        if(it == f_last_line.cend())
         {
-            // we found an empty line
-            //
-std::cerr << "found empty line (Last? " << (f_eos ? "EOS" : "not eos?!") << ")\n";
-            if(f_eos)
+std::cerr << "found empty line ("
+<< (f_working_block->is_line() ? "completely empty + " : "")
+<< "Last? " << (f_eos ? "EOS" : "not eos?!") << ")\n";
+            if(f_working_block->is_line())
             {
-                // end of data, return
+                // we found an empty line
                 //
-                return;
-            }
+                if(f_eos)
+                {
+                    // end of data, return
+                    //
+                    return;
+                }
 
-            // handle an empty line (important for code blocks)
-            //
-            process_empty_line();
-            continue;
+                // handle an empty line (important for code blocks)
+                //
+                process_empty_line(true);
+                continue;
+            }
+std::cerr << "blockquotes? "
+<< (f_working_block->is_blockquote() ? "WORKING" : "")
+<< " "
+<< (f_last_block->is_in_blockquote() ? "LAST" : "")
+<< "\n";
+            if(f_working_block->is_blockquote()
+            && f_last_block->is_in_blockquote())
+            {
+                // an empty line within a blockquote
+                // (but not at the start)
+                //
+                process_empty_line(false);
+                continue;
+            }
         }
-std::cerr << " --- not block? "
+std::cerr << " --- not empty? "
 << " -- it position: "
 << it - f_last_line.cbegin()
 << "\n";
@@ -1316,12 +1416,33 @@ std::cerr << " --- not indented block? "
         && it->f_column >= (f_list_subblock == 0 ? 5 : f_list_subblock + 4))
         {
             process_paragraph(it);
-std::cerr << " ---- early paragraph with list sub-block = "
+std::cerr << " ---- early paragraph WITHOUT list sub-block = "
 << it->f_column
 << " >= "
 << f_list_subblock
 << " + 4\n";
             append_line();
+            continue;
+        }
+
+        if(f_last_block->parent() != nullptr
+        && f_last_block->parent()->is_blockquote()
+        && f_working_block->is_blockquote()
+        && it == f_last_line.cend())
+        {
+std::cerr << " ---- early paragraph with blockquote empty line; got paragraph? "
+<< (f_last_block->is_paragraph() ? "TRUE" : "FALSE")
+<< "\n";
+            //f_last_block->parent()->followed_by_an_empty_line(true);
+            if(!f_last_block->is_paragraph())
+            {
+                process_paragraph(it);
+                append_line();
+            }
+            else
+            {
+                f_last_block->followed_by_an_empty_line(true);
+            }
             continue;
         }
 
@@ -1338,7 +1459,7 @@ std::cerr << " --- not fenced block? "
 << "\n";
 void const * it_ptr(reinterpret_cast<void const *>(&*it));
 if(it_ptr < reinterpret_cast<void const *>(&*f_last_line.cbegin())
-|| it_ptr >= reinterpret_cast<void const *>(&*f_last_line.cend()))
+|| it_ptr > reinterpret_cast<void const *>(&*f_last_line.cend()))
 {
     throw commonmark_logic_error("invalid it from fenced code?");
 }
@@ -1356,7 +1477,7 @@ std::cerr << " --- not HTML block? "
 << "\n";
 void const * it_ptr2 = reinterpret_cast<void const *>(&*it);
 if(it_ptr2 < reinterpret_cast<void const *>(&*f_last_line.cbegin())
-|| it_ptr2 >= reinterpret_cast<void const *>(&*f_last_line.cend()))
+|| it_ptr2 > reinterpret_cast<void const *>(&*f_last_line.cend()))
 {
     throw commonmark_logic_error("invalid it after HTML");
 }
@@ -1378,11 +1499,23 @@ std::cerr << " --- not header? "
 << it - f_last_line.cbegin()
 << "\n";
 
-        if(process_thematic_break_or_setext_heading(it))
+        switch(process_thematic_break_or_setext_heading(it))
         {
+        case 0:
+            break;
+
+        case 1:
 std::cerr << " ---- break or setext\n";
             append_line();
             continue;
+
+        case 2:
+std::cerr << " ---- setext fully handled\n";
+            continue;
+
+        default:
+            throw std::logic_error("process_thematic_break_or_setext_heading() returned an unexpected exit code");
+
         }
 std::cerr << " --- not thematic break? "
 << " -- it position: "
@@ -1392,13 +1525,21 @@ std::cerr << " --- not thematic break? "
         if(process_reference_definition(it))
         {
 std::cerr << " ---- link reference\n";
+            // no line to append unless we are in a blockquote or a list
+            // (which again makes no sense! why keep such empty lines??)
+            //
+            if(f_working_block->is_list()
+            || f_working_block->is_blockquote())
+            {
+                append_line();
+            }
             continue;
         }
 std::cerr << " --- not reference? "
 << " -- it position: "
 << it - f_last_line.cbegin()
 << " == "
-<< (it == f_last_line.cend() ? " END REACHED!" : " it is not at the end, we're good, right?")
+<< (it == f_last_line.cend() ? "END REACHED!" : "it is not at the end, we're good, right?")
 << "\n";
 
         process_paragraph(it);
@@ -1426,20 +1567,42 @@ std::cerr << f_document->tree();
 std::cerr << "- * ---------------------------- DOCUMENT TREE BEFORE CHECKING CONTAINERS END\n";
     bool const previous_line_is_indented_code_block(f_last_block->is_indented_code_block());
     bool const previous_line_is_header(f_last_block->is_header());
+    bool const previous_line_is_paragraph_in_blockquote(
+                   f_last_block->parent() != nullptr
+                && f_last_block->parent()->is_blockquote()
+                && f_last_block->is_paragraph()
+                && !f_last_block->followed_by_an_empty_line());
+    bool const previous_line_is_list(
+                   f_last_block->parent() != nullptr
+                && f_last_block->parent()->is_list());
+    bool const previous_line_is_empty_list(
+                   previous_line_is_list
+                && f_last_block->is_paragraph()
+                && f_last_block->content().empty());
     bool const has_empty_line(
-               f_last_block->parent() != nullptr
-            && f_last_block->parent()->is_list()
-                    ? f_last_block->parent()->followed_by_an_empty_line()
-                    : f_last_block->followed_by_an_empty_line());
+                   previous_line_is_list
+                        ? f_last_block->parent()->followed_by_an_empty_line()
+                        : f_last_block->followed_by_an_empty_line());
+
+    int const blockquote_column(f_last_block->get_blockquote_end_column());
+
+    // for the indentation, I use max() / 2 because we do some + 1 or + 4
+    // here and there and we do not want the indentation to wrap around in
+    // those cases
+    //
     std::uint32_t const list_indent(
-               f_last_block->parent() != nullptr
-            && f_last_block->parent()->is_list()
+               previous_line_is_list
                     ? (has_empty_line
-                        ? f_last_block->parent()->first_child()->end_column()
-                        : std::numeric_limits<std::uint32_t>::max())
+                        ? (f_last_block->parent()->first_child()->is_indented_code_block()
+                            ? f_last_block->parent()->end_column() + 1
+                            : f_last_block->parent()->first_child()->end_column()
+                                                        - blockquote_column)
+                        : (previous_line_is_empty_list
+                            ? f_last_block->parent()->end_column() + 1
+                            : std::numeric_limits<std::uint32_t>::max() / 2))
                     : (has_empty_line
                         ? 1U
-                        : std::numeric_limits<std::uint32_t>::max()));
+                        : std::numeric_limits<std::uint32_t>::max() / 2));
 
 std::cerr
 << "+++ checking for containers (list_indent="
@@ -1452,6 +1615,8 @@ std::cerr
         : "(no parent)")
 << ", f_working_block->end_column()="
 << f_working_block->end_column()
+<< ", has empty line? "
+<< (has_empty_line ? "YES" : "no")
 << ")\n";
 
     f_code_block = false;
@@ -1502,15 +1667,23 @@ std::cerr << "   column: " << it->f_column << " indent " << list_indent
         //  B  L  B S+4 B
         //
         f_current_gap = it->f_column - f_working_block->end_column();
+        if(f_working_block->is_list() 
+        && f_current_gap > 0)
+        {
+            --f_current_gap;
+        }
         if((has_empty_line
             || previous_line_is_indented_code_block
-            || previous_line_is_header)
+            || previous_line_is_header
+            || previous_line_is_empty_list)
         && f_current_gap >= 4
-        && it->f_column >= list_indent + 4)
+        && it->f_column >= ((list_indent >= std::numeric_limits<std::uint32_t>::max() / 2 ? 1 : list_indent) + 4))
         {
 std::cerr << "+++ got a gap of "
 << f_current_gap
-<< " >= 4 blanks! (working column: "
+<< " >= 4 blanks! (working column/end: "
+<< f_working_block->column()
+<< "/"
 << f_working_block->end_column()
 << ", it column "
 << it->f_column
@@ -1518,21 +1691,23 @@ std::cerr << "+++ got a gap of "
 << list_indent + 4
 << " -- it position: "
 << it - f_last_line.cbegin()
-<< ")\n";
+<< ") TOP"
+<< (has_empty_line ? " has-empty-line" : "")
+<< (f_last_block->parent() != nullptr ? " has-parent" : "")
+<< "\n";
 
             f_code_block = true;
 
-            if(f_last_block->parent() != nullptr
-            && f_last_block->parent()->is_list()
-            && has_empty_line)
+            if(previous_line_is_empty_list
+            || (previous_line_is_list
+                     && has_empty_line))
             {
                 f_list_subblock = list_indent + 4;
             }
             else if(f_working_block->is_list())
             {
-                // TBD: why the -1 here?
-                //
-                f_list_subblock = it->f_column - f_working_block->end_column();
+                //f_list_subblock = it->f_column - f_working_block->end_column();
+                f_list_subblock = std::min(it->f_column, f_working_block->end_column() + 5U);
             }
 std::cerr << " ---- gap return with f_list_subblock of "
 << f_list_subblock
@@ -1555,6 +1730,24 @@ std::cerr << "+++ gap so far "
 << "\n";
 }
 
+        if(previous_line_is_paragraph_in_blockquote
+        && f_current_gap >= 4
+        && it->f_column >= ((list_indent >= std::numeric_limits<std::uint32_t>::max() / 2 ? 1 : list_indent) + 4))
+        {
+std::cerr << "+++ got a gap of "
+<< f_current_gap
+<< " >= 4 blanks! (working column: "
+<< f_working_block->end_column()
+<< ", it column "
+<< it->f_column
+<< ", list indent + 4: "
+<< list_indent + 4
+<< " -- it position: "
+<< it - f_last_line.cbegin()
+<< ")\n";
+            break;
+        }
+
         if(skipped_blank)
         {
             continue;
@@ -1576,8 +1769,7 @@ std::cerr << "working block is a list? "
 << " -- it position: "
 << it - f_last_line.cbegin()
 << "\n";
-        if(!f_working_block->is_list()
-        && parse_list(it))
+        if(parse_list(it))
         {
 std::cerr << "+++ found a list...\n";
             continue;
@@ -1599,7 +1791,9 @@ std::cerr << "then compare "
 << " -- it position: "
 << it - f_last_line.cbegin()
 << "\n";
-            if(it->f_column >= list_indent + 4)
+            std::uint32_t const current_blockquote_column(f_working_block->get_blockquote_end_column());
+            std::uint32_t const current_column(it->f_column - current_blockquote_column);
+            if(current_column >= list_indent + 4)
             {
 std::cerr << "+++ this looks like a list item followed by this block code: "
 << it->f_column
@@ -1614,9 +1808,12 @@ std::cerr << "+++ this looks like a list item followed by this block code: "
                 f_code_block = true;
                 f_list_subblock = list_indent + 4;
             }
+            //else if(current_column >= list_indent)
             else if(it->f_column >= list_indent)
             {
 std::cerr << "+++ this is a list item followed by this additional paragraph: "
+<< current_column
+<< " or "
 << it->f_column
 << " >= "
 << list_indent
@@ -1628,6 +1825,39 @@ std::cerr << "+++ this is a list item followed by this additional paragraph: "
 
                 f_list_subblock = list_indent;
             }
+        }
+
+        if(has_empty_line
+        && f_current_gap < static_cast<int>(list_indent - 1)
+        && f_current_gap >= 4)
+        {
+std::cerr << "+++ got a gap of "
+<< f_current_gap
+<< " >= 4 blanks! (list indent: "
+<< list_indent
+<< " and sub-block is "
+<< f_list_subblock
+<< ") BOTTOM\n";
+
+            f_code_block = true;
+
+//            if(f_last_block->parent() != nullptr
+//            && f_last_block->parent()->is_list()
+//            && has_empty_line)
+//            {
+//                f_list_subblock = list_indent + 4;
+//            }
+//            else if(f_working_block->is_list())
+//            {
+//                // TBD: why the -1 here?
+//                //
+//                f_list_subblock = it->f_column - f_working_block->end_column();
+//            }
+//std::cerr << " ---- gap return with f_list_subblock of "
+//<< f_list_subblock
+//<< "\n";
+
+            break;
         }
 
 std::cerr << "+++ not a list or blockquote?"
@@ -1702,7 +1932,7 @@ std::cerr << " >> numbered list...\n";
         // but first read the whole number
         //
         number = et->digit_number();
-        for(++et; et->is_digit(); ++et)
+        for(++et; et != f_last_line.cend() && et->is_digit(); ++et)
         {
             number *= 10;
             number += et->digit_number();
@@ -1714,7 +1944,21 @@ std::cerr << " >> numbered list...\n";
                 return false;
             }
         }
-        if(!et->is_ordered_list_end_marker())
+        if(et == f_last_line.cend()
+        || !et->is_ordered_list_end_marker())
+        {
+            return false;
+        }
+
+        // very special case where we do not allow a numbered list to
+        // start within a paragraph; instead make it a paragraph
+        // continuation (otherwise, use an empty line)
+        //
+        if(number != 1
+        && f_last_block->is_paragraph()
+        && !f_last_block->followed_by_an_empty_line()
+        && (f_last_block->parent() == nullptr
+            || !f_last_block->parent()->is_list()))
         {
             return false;
         }
@@ -1727,13 +1971,38 @@ std::cerr << " >> numbered list...\n";
 std::cerr << " >> not a list mark...\n";
             return false;
         }
-        ++et;
-        if(!et->is_blank())
+    }
+
+// at this level, I still have no idea whether this is going to be a list
+// or not; it's just way too complicated at the moment (with my implementation)
+// to know that...
+//    if(it->f_column - f_working_block->end_column() >= 4)
+//    {
+//        if(f_last_block->parent() == nullptr
+//        || !f_last_block->parent()->is_list()
+//        || static_cast<int>(it->f_column) - f_working_block->end_column() > f_last_block->parent()->end_column())
+//        {
+//std::cerr << " >> not a list after all? "
+//<< static_cast<int>(it->f_column)
+//<< " - " << f_working_block->end_column()
+//<< " >= " << f_last_block->parent()->end_column()
+//<< "\n";
+//            return false;
+//        }
+//    }
+
+    if(f_last_block->parent() != nullptr
+    && f_last_block->parent()->is_list()
+    && f_last_block->parent()->followed_by_an_empty_line()
+    && f_last_block->parent()->first_child() != nullptr)
+    {
+        int const gap(it->f_column - f_working_block->column() + 1);
+std::cerr << " >> list computed gap " << gap << " vs first child " << f_last_block->parent()->first_child()->column() << "\n";
+        if(gap > 4
+        && gap < f_last_block->parent()->first_child()->column())
         {
-std::cerr << " >> not a list item (blank missing after mark)...\n";
             return false;
         }
-        --et;
     }
 
     character type(*it);            // get position of 'it'
@@ -1741,7 +2010,8 @@ std::cerr << " >> not a list item (blank missing after mark)...\n";
 std::cerr << " >> list type [" << static_cast<int>(et->f_char) << "]...\n";
 
     ++et;
-    if(!et->is_blank())
+    if(et != f_last_line.cend()
+    && !et->is_blank())
     {
 std::cerr << " >> list blank missing [" << static_cast<int>(et->f_char) << "]...\n";
         return false;
@@ -1752,13 +2022,31 @@ std::cerr << " >> list blank missing [" << static_cast<int>(et->f_char) << "]...
     {
         b->number(number);
     }
-    b->end_column(et->f_column);    // end column is defined in 'et'
+
+    // end column is defined in 'et' which may already be the end of the line
+    //
+    if(et != f_last_line.cend())
+    {
+        b->end_column(et->f_column);
+    }
+    else
+    {
+        // simulate a list introducer followed by a space
+        //
+        b->end_column((et - 1)->f_column + 1);
+    }
 
     f_working_block->link_child(b);
     f_working_block = b;
 
     it = et;
-    ++it;
+    if(it != f_last_line.cend())
+    {
+        // skip the blank
+        //
+        ++it;
+    }
+
     return true;
 }
 
@@ -1809,8 +2097,11 @@ bool commonmark::is_thematic_break(character::string_t::const_iterator it)
  * However, in a block of code, empty lines are expected and these need to
  * be tracked. The function adds an empty line to the list of blocks if the
  * current block is a block of code.
+ *
+ * \param[in] blockquote_followed_by_empty  Whether the BLOCKQUOTE can also
+ * be marked as followed by an empty line.
  */
-void commonmark::process_empty_line()
+void commonmark::process_empty_line(bool blockquote_followed_by_empty)
 {
     if(f_last_block->parent() != nullptr
     && f_last_block->parent()->is_list())
@@ -1820,6 +2111,13 @@ void commonmark::process_empty_line()
     else
     {
         f_last_block->followed_by_an_empty_line(true);
+
+        if(blockquote_followed_by_empty
+        && f_last_block->parent() != nullptr
+        && f_last_block->parent()->is_blockquote())
+        {
+            f_last_block->parent()->followed_by_an_empty_line(true);
+        }
     }
 
     if(f_last_block->is_indented_code_block())
@@ -1848,12 +2146,14 @@ std::cerr << "- * ---------------------------- LAST BLOCK TREE AFTER EMPTY LINE 
 
 bool commonmark::process_paragraph(character::string_t::const_iterator & it)
 {
+#ifdef _DEBUG
     void const * it_ptr(reinterpret_cast<void const *>(&*it));
     if(it_ptr < reinterpret_cast<void const *>(&*f_last_line.cbegin())
-    || it_ptr >= reinterpret_cast<void const *>(&*f_last_line.cend()))
+    || it_ptr > reinterpret_cast<void const *>(&*f_last_line.cend()))
     {
         throw commonmark_logic_error("paragraph called with a mismatached it parameter");
     }
+#endif
 
 std::cerr << "    setup character\n";
 #pragma GCC diagnostic push
@@ -1893,31 +2193,154 @@ void commonmark::append_line()
         throw commonmark_logic_error("append_line() called with an empty line.");
     }
 
+    // appending a line is very complex as the current line may get attached
+    // to any previous level of blockquote or list item depending on the
+    // new line indentation and type, the following tries to capture all
+    // the cases properly, but it's really not that simple...
+    //
+    // things to take in account:
+    //
+    // 1. blockquote
+    // 2. list
+    // 3. identation
+    //
+    // how to link
+    //
+    // 1. as a brand new item, link below f_document
+    // 2. as a new list item within a list (i.e a sibling)
+    // 3. as a list sub-item (i.e. a child of another list)
+    // 4. merge text in two paragraphs
+    //
+
     if(f_list_subblock > 0
     || (f_working_block->parent() != nullptr
            && f_working_block->parent()->is_blockquote()
+           && f_working_block->is_indented_code_block())
+    || (f_working_block->parent() != nullptr
+           && f_working_block->parent()->is_list()
+           && f_working_block->is_in_blockquote()
            && f_working_block->is_indented_code_block()))
     {
-std::cerr << "+++ add child to list?\n";
-        b->unlink();
         if(f_last_block->parent() != nullptr
-        && f_last_block->parent()->is_list())
+        && f_last_block->parent()->is_list()
+        && f_last_block->parent()->followed_by_an_empty_line()
+        && f_last_block->is_paragraph()
+        && f_last_block->is_in_blockquote()
+        && f_working_block->parent() != nullptr
+        && f_working_block->parent()->is_blockquote()
+        && f_working_block->is_paragraph())
         {
-            f_last_block->parent()->link_child(b);
+            block::pointer_t blockquote(f_last_block->find_blockquote());
+            if(blockquote == nullptr)
+            {
+                throw unexpected_null_pointer("could not find blockquote when is_in_blockquote() returned true");
+            }
+
+            int const list_first_child_indent = f_last_block->parent()->first_child()->column()
+                                        - blockquote->end_column();
+            int const working_block_indent = f_working_block->column()
+                                        - f_working_block->parent()->end_column();
+std::cerr << "+++ add paragraph to list inside blockquote? (newest) working block indent = "
+<< f_working_block->column()
+<< " when the list indent = "
+<< f_last_block->parent()->column()
+<< "/"
+<< f_last_block->parent()->end_column()
+<< " blockquote indent = "
+<< blockquote->column()
+<< "/"
+<< blockquote->end_column()
+<< " and first child = "
+<< f_last_block->parent()->first_child()->column()
+<< " -> list " << list_first_child_indent
+<< " vs para " << working_block_indent
+<< "\n";
+            if(working_block_indent >= list_first_child_indent
+            && working_block_indent <= list_first_child_indent + 3)
+            {
+                b = f_working_block;
+                b->unlink();
+                f_last_block->parent()->link_child(b);
+            }
+            else
+            {
+                b = f_working_block;
+                b->unlink();
+                blockquote->link_child(b);
+            }
         }
         else
         {
-            f_last_block->link_child(b);
+            if(f_last_block->parent() != nullptr
+            && f_last_block->parent()->is_list())
+            {
+                if(f_last_block->is_indented_code_block()
+                && b->is_indented_code_block())
+                {
+std::cerr << "+++ append indented code block? (list sub-block: " << f_list_subblock << ")\n";
+                    b->unlink();
+                    f_last_block->append(b->content());
+                    return; // <-- this is double ugly
+                }
+                else
+                {
+                    if(f_working_block->parent() == nullptr
+                    || f_working_block->parent()->parent() == nullptr
+                    || !f_working_block->parent()->is_list()
+                    || (f_working_block->parent()->column() >= f_last_block->parent()->first_child()->column()
+                        && f_working_block->parent()->column() <= f_last_block->parent()->first_child()->column() + 3))
+                    {
+std::cerr << "+++ add child to list? (list sub-block: " << f_list_subblock << ")\n";
+                        block::pointer_t p(f_last_block->parent());
+                        if(f_last_block->is_paragraph()
+                        && f_last_block->content().empty())
+                        {
+                            f_last_block->unlink();
+                        }
+                        b->unlink();
+                        p->link_child(b);
+                    }
+                    else if(f_working_block->parent() != nullptr
+                         && f_working_block->parent()->is_list()
+                         && f_working_block->parent()->column() > 4)
+                    {
+std::cerr << "+++ append list item content to previous list item content? (list sub-block: " << f_list_subblock << ")\n";
+                        //b->unlink();
+                        //f_last_block->parent()->parent()->link_child(b);
+                        append_list_as_text(f_last_block, f_working_block);
+                    }
+                    else
+                    {
+std::cerr << "+++ add sibling to list? (list sub-block: " << f_list_subblock << ")\n";
+                        b->unlink();
+                        f_last_block->parent()->parent()->link_child(b);
+                    }
+                }
+            }
+            else
+            {
+std::cerr << "+++ add child to child? (list sub-block: " << f_list_subblock << ")\n";
+                b->unlink();
+                f_last_block->link_child(b);
+            }
         }
         f_last_block = f_working_block;
+
+        return;
     }
-    else if((f_last_block->is_indented_code_block()
-                && b->is_indented_code_block())
-         || (f_last_block->is_paragraph()
+
+    if((f_last_block->is_indented_code_block()
+                && b->is_indented_code_block()
+                && f_last_block->is_in_blockquote() == b->is_in_blockquote())
+    || ((f_last_block->parent() != nullptr
+                && f_last_block->parent()->is_list()
+                    ? !f_last_block->parent()->followed_by_an_empty_line()
+                    : true)
+                && f_last_block->is_paragraph()
                 && !f_last_block->followed_by_an_empty_line()
                 && b->is_paragraph()))
     {
-std::cerr << "+++ append or what? ["
+std::cerr << "+++ append to existing block code or paragraph? ["
 << b->content()
 << "]\n";
 
@@ -1927,7 +2350,8 @@ std::cerr << "+++ append or what? ["
         // the code block always gets a line feed (even at the end) so it's
         // handled differently
         //
-        if(b->is_paragraph())
+        if(b->is_paragraph()
+        && !f_last_block->content().empty())
         {
             character c(*f_last_line.crbegin());
             c.f_char = CHAR_LINE_FEED;
@@ -1936,27 +2360,176 @@ std::cerr << "+++ append or what? ["
         }
 
         f_last_block->append(b->content());
+        return;
     }
-    else if(f_working_block->parent() != nullptr
-         && f_working_block->parent()->is_list()
-         && f_last_block->parent() != nullptr
-         && f_last_block->parent()->is_list()
-         && f_working_block->parent()->column() >= f_last_block->parent()->end_column()
-         && f_working_block->parent()->column() <= f_last_block->parent()->end_column() + 3)
+
+    if(f_working_block->parent() != nullptr
+    && f_working_block->parent()->is_list()
+    && f_last_block->parent() != nullptr
+    && f_last_block->parent()->is_list()
+    && f_working_block->parent()->column() >= f_last_block->parent()->end_column() + 1
+    && f_working_block->parent()->column() <= f_last_block->parent()->end_column() + 3)
     {
-std::cerr << "+++ link sub-list? " << (reinterpret_cast<void *>(b.get())) << "\n";
+std::cerr << "+++ link sub-list? "
+<< "working parent column: " << f_working_block->parent()->column()
+<< ", last parent end-column: " << f_last_block->parent()->end_column()
+<< "\n";
         b = f_working_block->parent();
         b->unlink();
         f_last_block->parent()->link_child(b);
         f_last_block = f_working_block;
+        return;
     }
-    else
+
+    if(f_working_block->parent() != nullptr
+    && f_working_block->parent()->is_blockquote()
+    && f_last_block->parent() != nullptr
+    && f_last_block->parent()->is_blockquote()
+    && !f_last_block->parent()->followed_by_an_empty_line())
+    {
+std::cerr << "+++ link following blockquote? " << (reinterpret_cast<void *>(b.get())) << "\n";
+        b = f_working_block;
+        b->unlink();
+std::cerr << "- * ---------------------------- B TREE:\n";
+std::cerr << b->tree();
+std::cerr << "- * ---------------------------- B TREE END ---\n";
+std::cerr << "- * ---------------------------- LAST BLOCK TREE:\n";
+std::cerr << f_last_block->tree();
+std::cerr << "- * ---------------------------- LAST BLOCK TREE END ---\n";
+
+        if(b->is_paragraph()
+        && f_last_block->is_paragraph()
+        && !f_last_block->followed_by_an_empty_line())
+        {
+            if(!f_last_block->content().empty())
+            {
+                character c(*f_last_line.crbegin());
+                c.f_char = CHAR_LINE_FEED;
+                ++c.f_column;
+                f_last_block->append(c);
+            }
+            f_last_block->append(b->content());
+        }
+        else
+        {
+            f_last_block->parent()->link_child(b);
+            f_last_block = f_working_block;
+        }
+        return;
+    }
+
+    if((f_working_block->is_code_block()
+           || f_working_block->is_in_blockquote())
+    && f_last_block->is_in_list()
+    && !f_last_block->find_list()->followed_by_an_empty_line()
+    && (f_working_block->parent() != nullptr
+       && f_working_block->parent()->is_list()
+           ? f_working_block->parent()->column() >= f_last_block->find_list()->end_column()
+                && f_working_block->parent()->column() <= f_last_block->find_list()->end_column() + 3
+           : f_working_block->column() >= f_last_block->find_list()->end_column()
+                && f_working_block->column() <= f_last_block->find_list()->end_column() + 3))
+    {
+std::cerr << "+++ append code block or blockquote to list? "
+<< f_working_block->column()
+<< " -- "
+<< f_last_block->parent()->end_column()
+<< "\n";
+        b->unlink();
+        f_last_block->find_list()->link_child(b);
+
+        // we do not want to keep an empty paragraph
+        //
+        if(f_last_block->is_paragraph()
+        && f_last_block->content().empty())
+        {
+            f_last_block->unlink();
+        }
+
+        f_last_block = f_working_block;
+        return;
+    }
+
+    if(f_working_block->is_paragraph()
+    && f_working_block->parent() != nullptr
+    && !f_working_block->parent()->is_list()
+    && f_last_block->is_header()
+    && f_last_block->parent() != nullptr
+    && f_last_block->parent()->is_list()
+    && !f_last_block->parent()->followed_by_an_empty_line()
+    && f_working_block->column() >= f_last_block->parent()->end_column()
+    && f_working_block->column() <= f_last_block->parent()->end_column() + 3)
+    {
+std::cerr << "+++ append list item? " << (reinterpret_cast<void *>(b.get())) << "\n";
+        character type(b->type());
+        type.f_char = BLOCK_TYPE_TEXT;
+        block::pointer_t text(std::make_shared<block>(type));
+
+        character c(*f_last_line.crbegin());
+        c.f_char = CHAR_LINE_FEED;
+        ++c.f_column;
+        text->append(c);
+        text->append(b->content());
+        f_last_block->parent()->link_child(text);
+
+        // we do not want to keep an empty paragraph
+        //
+        if(f_last_block->is_paragraph()
+        && f_last_block->content().empty())
+        {
+            f_last_block->unlink();
+        }
+
+        f_last_block = text;
+        return;
+    }
+
+    if(f_working_block->is_paragraph()
+    && f_working_block->content().empty()
+    && f_working_block->parent() != nullptr
+    && f_working_block->parent()->is_list()
+    && f_last_block->is_paragraph()
+    && (f_last_block->parent() == nullptr
+        || !f_last_block->parent()->is_list()))
+    {
+std::cerr << "+++ append empty list to paragraph? " << (reinterpret_cast<void *>(b.get())) << "\n";
+
+        append_list_as_text(f_last_block, f_working_block);
+        return;
+    }
+
+    if(f_working_block->is_paragraph()
+    && f_working_block->parent() != nullptr
+    && f_working_block->parent()->is_list()
+    && f_working_block->parent()->column() > 4
+    && f_last_block->is_paragraph()
+    && f_last_block->parent() != nullptr
+    && f_last_block->parent()->is_list())
+    {
+std::cerr << "+++ append paragraph continuation instead of list? " << (reinterpret_cast<void *>(b.get())) << "\n";
+
+        append_list_as_text(f_last_block, f_working_block);
+        return;
+    }
+
+//    if(f_working_block->is_blockquote()
+//    && f_last_block->is_blockquote())
+//    {
+//std::cerr << "+++ \"link\" empty blockquote? " << (reinterpret_cast<void *>(b.get())) << "\n";
+//
+//        // do (nearly) nothing in this case
+//        //
+//        f_last_block = f_working_block;
+//        return;
+//    }
+
     {
 std::cerr << "+++ working parent is list? "
     << (f_working_block->parent() ? (f_working_block->parent()->is_list() ? "LIST" : "no") : "no parent")
 << "\n    last parent is list? "
     << (f_last_block->parent() ? (f_last_block->parent()->is_list() ? "LIST" : "no") : "no parent")
-<< "\n    columns: "
+<< "\n    columns (w/wp/lp): "
+    << std::to_string(f_working_block->column())
+<< " & "
     << (f_working_block->parent() ? std::to_string(f_working_block->parent()->column()) : "no parent")
 << " & "
     << (f_last_block->parent() ? std::to_string(f_last_block->parent()->end_column()) : "no parent")
@@ -1966,17 +2539,78 @@ std::cerr << "+++ link new? " << (reinterpret_cast<void *>(b.get())) << "\n";
         b->unlink();
         f_document->link_child(b);
         f_last_block = f_working_block;
+        return;
     }
 }
 
 
-bool commonmark::process_thematic_break_or_setext_heading(character::string_t::const_iterator & it)
+void commonmark::append_list_as_text(block::pointer_t dst_list_item, block::pointer_t src_list)
+{
+    character c(*f_last_line.crbegin());
+    c.f_char = CHAR_LINE_FEED;
+    ++c.f_column;
+    dst_list_item->append(c);
+
+    int order(-1);
+    character list_type(src_list->parent()->type());
+    switch(list_type.f_char)
+    {
+    case BLOCK_TYPE_LIST_ASTERISK:
+        c.f_char = CHAR_ASTERISK;
+        break;
+
+    case BLOCK_TYPE_LIST_PLUS:
+        c.f_char = CHAR_PLUS;
+        break;
+
+    case BLOCK_TYPE_LIST_DASH:
+        c.f_char = CHAR_DASH;
+        break;
+
+    case BLOCK_TYPE_LIST_PERIOD:
+        order = src_list->parent()->number();
+        c.f_char = CHAR_PERIOD;
+        break;
+
+    case BLOCK_TYPE_LIST_PARENTHESIS:
+        order = src_list->parent()->number();
+        c.f_char = CHAR_OPEN_PARENTHESIS;
+        break;
+
+    default:
+        throw std::logic_error("unknown list type in append_line()");
+
+    }
+    if(order >= 0)
+    {
+        character d(c);
+        std::string const n(std::to_string(order));
+        for(auto const & m : n)
+        {
+            d.f_char = static_cast<char32_t>(m);
+            dst_list_item->append(d);
+        }
+    }
+    dst_list_item->append(c);
+
+    if(!src_list->content().empty())
+    {
+        c.f_char = CHAR_SPACE;
+        dst_list_item->append(c);
+
+        dst_list_item->append(src_list->content());
+    }
+}
+
+
+int commonmark::process_thematic_break_or_setext_heading(character::string_t::const_iterator & it)
 {
 std::cerr << "process_thematic_break_or_setext_heading() called!\n";
     // [REF] 4.1 Thematic breaks
     //
 
-    if(f_list_subblock >= 4)
+    if(it == f_last_line.cend()
+    || f_list_subblock >= 4)
     {
         return false;
     }
@@ -1988,7 +2622,7 @@ std::cerr << "process_thematic_break_or_setext_heading() called!\n";
     if(!c.is_thematic_break()
     && !c.is_equal())
     {
-        return false;
+        return 0;
     }
 std::cerr << " >>> sub-block? " << f_list_subblock << "\n";
 
@@ -2017,7 +2651,7 @@ std::cerr << " >>> sub-block? " << f_list_subblock << "\n";
         }
         else if(*st != c)
         {
-            return false;
+            return 0;
         }
     }
 
@@ -2038,7 +2672,11 @@ std::cerr << "last block: " << (f_last_block->is_in_blockquote() ? "IN BLOCKQUOT
     && f_last_block->is_paragraph()
     && !f_last_block->followed_by_an_empty_line()
     && f_last_block->is_in_blockquote() == f_working_block->is_in_blockquote()
-    && f_last_block->parent() != nullptr && !f_last_block->parent()->is_list())
+    && (f_working_block->parent() == nullptr
+            || !f_working_block->parent()->is_list())
+    && f_last_block->parent() != nullptr
+            && (!f_last_block->parent()->is_list()
+                || (it->f_column >= static_cast<uint32_t>(f_last_block->parent()->end_column() + 1))))
     {
 std::cerr << "- * ---------------------------- LAST BLOCK:\n";
 std::cerr << f_last_block->tree();
@@ -2070,6 +2708,10 @@ std::cerr << " --- unlink: "
 << reinterpret_cast<void *>(f_last_block->previous().get())
 << "\n";
 
+        // keep a pointer to the parent, just in case
+        //
+        block::pointer_t parent(f_last_block->parent());
+
         b->append(f_last_block->content());
         f_last_block->unlink();
 std::cerr << "- * ---------------------------- DOCUMENT TREE AFTER UNLINK\n";
@@ -2082,19 +2724,27 @@ std::cerr << "- * ---------------------------- DOCUMENT TREE AFTER UNLINK END --
         //}
         //p->link_child(b);
 
+        if(parent != nullptr
+        && parent->is_list())
+        {
+            parent->link_child(b);
+            f_last_block = b;
+            return 2;
+        }
+
         f_working_block->link_child(b);
         f_working_block = b;
 std::cerr << "- * ---------------------------- DOCUMENT TREE AFTER RELINK\n";
 std::cerr << f_document->tree();
 std::cerr << "- * ---------------------------- DOCUMENT TREE AFTER RELINK END ---\n";
 
-        return true;
+        return 1;
     }
 
     if(count < 3
     || c.is_equal())        // equal is only for the Setext
     {
-        return false;
+        return 0;
     }
 
     character type(c);
@@ -2118,7 +2768,7 @@ std::cerr << "- * ---------------------------- DOCUMENT TREE AFTER RELINK END --
     f_working_block = b;
 std::cerr << "linked as child!\n";
 
-    return true;
+    return 1;
 }
 
 
@@ -2127,19 +2777,38 @@ bool commonmark::process_reference_definition(character::string_t::const_iterato
 std::cerr << " ---- process_reference_definition()...\n";
     // [REF] 4.7 Link reference definitions
     //
-    if(!it->is_open_square_bracket())
+    if(it == f_last_line.cend()
+    || !it->is_open_square_bracket())
     {
 std::cerr << " ---- not reference (1)...\n";
         return false;
     }
 
+    // it does not break a paragraph continuation
+    //
+    if(f_last_block->is_paragraph()
+    && !f_last_block->followed_by_an_empty_line()
+    && (f_last_block->parent() == nullptr
+        || !f_last_block->parent()->is_list()
+        || !f_last_block->parent()->followed_by_an_empty_line()))
+    {
+        return false;
+    }
+
+    input_status_t const saved_status(get_current_status());
+
     auto et(it);
 
 std::cerr << " ---- parse link text...\n";
     std::string reference_name;
-    if(!parse_link_text(f_last_line, et, reference_name))
+    if(!parse_link_text(
+              f_last_line
+            , et
+            , reference_name
+            , std::bind(&commonmark::get_line, this)))
     {
 std::cerr << " ---- not reference (2)...\n";
+        restore_status(saved_status);
         return false;
     }
 
@@ -2148,9 +2817,9 @@ std::cerr << " ---- check for colon: " << static_cast<int>(et->f_char) << "...\n
     || !et->is_colon())
     {
 std::cerr << " ---- not reference (3)...\n";
+        restore_status(saved_status);
         return false;
     }
-    ++et;
 
 std::cerr << " ---- skip blanks...\n";
     for(++et; et != f_last_line.cend() && et->is_blank(); ++et);
@@ -2160,13 +2829,13 @@ std::cerr << " ---- skip blanks...\n";
         // TODO: support multi-line properly (so we can cancel)
         //
         get_line();
-        it = f_last_line.cbegin();
-        et = it;
+        et = f_last_line.cbegin();
 std::cerr << " ---- skip blanks on next line...\n";
-        for(++et; et != f_last_line.cend() && et->is_blank(); ++et);
+        for(; et != f_last_line.cend() && et->is_blank(); ++et);
         if(et == f_last_line.cend())
         {
 std::cerr << " ---- not reference (4)...\n";
+            restore_status(saved_status);
             return false;
         }
     }
@@ -2180,6 +2849,7 @@ std::cerr << " ---- parse link destination...\n";
                         , link_title))
     {
 std::cerr << " ---- not reference (5)...\n";
+        restore_status(saved_status);
         return false;
     }
 
@@ -2213,15 +2883,22 @@ bool commonmark::parse_reference_destination(
 std::cerr << " ---- ref: EOF...\n";
         return false;
     }
+std::cerr << " ---- ref: destination {"
+<< character::string_t(et, f_last_line.cend())
+<< "}...\n";
 
     std::string destination;
     if(et->is_open_angle_bracket())
     {
-        for(++et; ; ++et)
+std::cerr << " ---- ref: read between < and >...\n";
+        for(++et; et != f_last_line.cend(); ++et)
         {
-            if(et != f_last_line.cend()
-            || et->is_open_angle_bracket()
-            || et->is_blank()
+            if(et->is_space())
+            {
+                destination += "%20";
+                continue;
+            }
+            if(et->is_open_angle_bracket()
             || et->is_ctrl())
             {
 std::cerr << " ---- ref: bad bracket/blank/ctrl...\n";
@@ -2243,9 +2920,11 @@ std::cerr << " ---- ref: bad bracket/blank/ctrl...\n";
             }
             destination += et->to_utf8();
         }
+std::cerr << " ---- ref: now destiation is <" << destination << ">...\n";
     }
     else
     {
+std::cerr << " ---- ref: read no < bracket destination...\n";
         for(; et != f_last_line.cend(); ++et)
         {
             if(et->is_blank()
@@ -2264,61 +2943,119 @@ std::cerr << " ---- ref: bad bracket/blank/ctrl...\n";
             }
             destination += et->to_utf8();
         }
+std::cerr << " ---- ref: got no < bracket destination [" << destination << "]...\n";
     }
 
-    // skip blanks
-    //
-    for(;; ++et)
+    if(et != f_last_line.cend())
     {
-        if(et == f_last_line.cend())
-        {
-std::cerr << " ---- ref: EOF skipping blanks...\n";
-            return false;
-        }
         if(!et->is_blank())
         {
-            break;
+            return false;
         }
+
+        // skip blanks
+        //
+        for(; et != f_last_line.cend() && et->is_blank(); ++et);
+    }
+
+    bool title_on_next_line(false);
+    input_status_t const saved_status(get_current_status());
+
+    if(et == f_last_line.cend())
+    {
+        // if we have to get a new line and it's not a title, then we
+        // want to restore that one line but still return true
+        //
+        get_line();
+        et = f_last_line.cbegin();
+        for(; et != f_last_line.cend() && et->is_blank(); ++et);
+
+        title_on_next_line = true;
     }
 
     std::string title;
-    if(et->is_link_title_open_quote())
+    if(et != f_last_line.cend()
+    && et->is_link_title_open_quote())
     {
-        character quote(*et);
-        if(quote.is_open_parenthesis())
+        if(parse_reference_title(et, title))
         {
-            quote.f_char = CHAR_CLOSE_PARENTHESIS;
+            title_on_next_line = false;
         }
-
-        for(++et; et != f_last_line.cend() && *et != quote; ++et)
+        else if(!title_on_next_line)
         {
-            if(quote.is_close_parenthesis()
-            && et->is_open_parenthesis())
-            {
-std::cerr << " ---- ref: bad title quotes or ()?...\n";
-                return false;
-            }
-            if(et->is_backslash())
-            {
-                ++et;
-                if(et == f_last_line.cend()
-                || !et->is_ascii_punctuation())
-                {
-                    --et;
-                }
-            }
-            title += et->to_utf8();
-        }
-        if(et == f_last_line.cend())
-        {
-std::cerr << " ---- ref: title closing quotes missing...\n";
             return false;
         }
-        ++et;
+    }
+
+    if(title_on_next_line)
+    {
+        restore_status(saved_status);
     }
 
     link_destination = destination;
     link_title = title;
+    return true;
+}
+
+
+bool commonmark::parse_reference_title(
+      character::string_t::const_iterator & et
+    , std::string & title)
+{
+    character quote(*et);
+    if(quote.is_open_parenthesis())
+    {
+        quote.f_char = CHAR_CLOSE_PARENTHESIS;
+    }
+
+    for(++et; ; ++et)
+    {
+        while(et == f_last_line.cend())
+        {
+            get_line();
+            if((!title.empty() && title.back() == '\n')     // allow one empty line, not two
+            || (f_last_line.empty() && f_eos))              // EOF reached
+            {
+std::cerr << " ---- ref: bad title, two or more empty lines...\n";
+                return false;
+            }
+            et = f_last_line.cbegin();
+            title += '\n';
+        }
+        if(*et == quote)
+        {
+            break;
+        }
+        if(quote.is_close_parenthesis()
+        && et->is_open_parenthesis())
+        {
+std::cerr << " ---- ref: bad title quotes or ()?...\n";
+            return false;
+        }
+        if(et->is_backslash())
+        {
+            ++et;
+            if(et == f_last_line.cend()
+            || !et->is_ascii_punctuation())
+            {
+                --et;
+            }
+        }
+        title += et->to_utf8();
+    }
+    if(et == f_last_line.cend())
+    {
+std::cerr << " ---- ref: title closing quotes missing...\n";
+        return false;
+    }
+
+    for(++et; et != f_last_line.cend() && et->is_blank(); ++et);
+    if(et != f_last_line.cend())
+    {
+std::cerr << " ---- ref: title followed by chars other than blanks...\n";
+        return false;
+    }
+
     return true;
 }
 
@@ -2468,16 +3205,27 @@ std::cerr << "+++ adding a CODE BLOCK here (indent: "
     //    }
     //}
     std::uint32_t indent(f_list_subblock);
-    if(indent == 0
-    && f_working_block->is_blockquote())
+    if(indent == 0)
     {
+        if(f_working_block->is_blockquote())
+        {
 std::cerr << " ---- blockquote ("
 << f_working_block->end_column()
-<< ") + code block\n";
-        indent = b->column() - f_working_block->end_column() + 1;
+<< ") + code block ("
+<< b->column()
+<< ")\n";
+            //indent = b->column() - f_working_block->end_column() + 1;
+            indent = f_working_block->end_column() + 4;
+        }
+        else
+        {
+            indent = 5;
+        }
     }
-std::cerr << " ---- got indent of " << indent << " vs column " << b->column() << "\n";
-    if(indent > 0)
+std::cerr << " ---- got indent of " << indent
+<< " vs column " << b->column()
+<< "\n";
+    //if(indent > 0)
     {
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wpedantic"
@@ -2512,7 +3260,8 @@ bool commonmark::process_fenced_code_block(character::string_t::const_iterator &
 {
     // [REF] 4.5 Fenced code blocks
     //
-    if(!it->is_fenced_code_block())
+    if(it == f_last_line.cend()
+    || !it->is_fenced_code_block())
     {
         return false;
     }
@@ -2584,6 +3333,8 @@ std::cerr << " --- adding info string [" << info_string
 #pragma GCC diagnostic pop
         f_working_block = f_top_working_block;
 
+        input_status_t const saved_status(get_current_status());
+
         get_line();
 std::cerr << " --- got next line [" << f_last_line << "]\n";
 
@@ -2595,6 +3346,7 @@ std::cerr << " --- got next line [" << f_last_line << "]\n";
             if(inside_blockquote
             && !f_working_block->is_in_blockquote())
             {
+                restore_status(saved_status);
                 break;
             }
         }
@@ -2701,7 +3453,8 @@ bool commonmark::process_html_blocks(character::string_t::const_iterator & it)
     // [REF] 4.6 HTML blocks
     //
 std::cerr << "   it on entry: [" << reinterpret_cast<void const *>(&*it) << "]\n";
-    if(!it->is_open_angle_bracket())
+    if(it == f_last_line.cend()
+    || !it->is_open_angle_bracket())
     {
         return false;
     }
@@ -3619,6 +4372,10 @@ void commonmark::generate(block::pointer_t b)
             f_output += "</p>\n";
             break;
 
+        case BLOCK_TYPE_TEXT:
+            generate_inline(b->content());
+            break;
+
         case BLOCK_TYPE_CODE_BLOCK_INDENTED:
         case BLOCK_TYPE_CODE_BLOCK_GRAVE:
         case BLOCK_TYPE_CODE_BLOCK_TILDE:
@@ -3635,7 +4392,24 @@ void commonmark::generate(block::pointer_t b)
             {
                 f_output += "<blockquote>\n";
             }
-            generate(b->first_child());
+            {
+                bool do_generate(true);
+                if(b->children_size() == 1
+                && b->first_child()->is_paragraph())
+                {
+                    character::string_t content(b->first_child()->content());
+                    auto it(content.cbegin());
+                    for(;
+                        it != content.cend()
+                            && (it->is_blank() || it->is_eol());
+                        ++it);
+                    do_generate = it != content.cend();
+                }
+                if(do_generate)
+                {
+                    generate(b->first_child());
+                }
+            }
             for(int count(0); count < b->number(); ++count)
             {
                 f_output += "</blockquote>\n";
@@ -3704,9 +4478,11 @@ void commonmark::generate_list(block::pointer_t & b)
         f_output += "<ul";
     }
 
+    char32_t const type_of_list(b->type().f_char);
+
     if(f_features.get_add_classes())
     {
-        switch(b->type().f_char)
+        switch(type_of_list)
         {
         case BLOCK_TYPE_LIST_ASTERISK:
             f_output += " class=\"cm-asterisk\"";
@@ -3733,17 +4509,32 @@ void commonmark::generate_list(block::pointer_t & b)
 
     f_output += ">\n";
 
+    bool const tight_list(b->is_tight_list());
+
+//std::cerr << "- * ---------------------------- DOCUMENT TREE BEFORE CHECKING LIST TIGHT:\n";
+//std::cerr << b->tree();
+//std::cerr << "- * ---------------------------- DOCUMENT TREE BEFORE CHECKING LIST TIGHT END\n";
+//std::cerr << "  >>> LIST IS CONSIDERED TIGHT? " << std::boolalpha << tight_list << "\n";
+
     // create all the items
     //
-    for(;; b = b->next())
+    block::pointer_t next;
+    for(;;)
     {
         // if the list item is not sparse, make sure to generate the
         // output as inline data instead of a paragraph
         //
+        // [REF] 5.3 Lists (see loose vs tight for the tests below)
+        //
         f_output += "<li>";
-        if(!b->followed_by_an_empty_line()
-        && b->first_child() != nullptr
-        && b->first_child()->is_paragraph())
+
+        //if((!b->followed_by_an_empty_line() || && b->children_size() == 1)
+        //&& b->first_child() != nullptr
+        //&& b->first_child()->is_paragraph())
+        if(b->first_child()->is_paragraph()
+        && (tight_list
+            || (b->children_size() == 1
+                && b->first_child()->content().empty())))
         {
             generate_inline(b->first_child()->content());
 
@@ -3768,10 +4559,12 @@ void commonmark::generate_list(block::pointer_t & b)
             break;
         }
 
-        if(!b->next()->is_list())
+        if(b->next()->type().f_char != type_of_list)
         {
             break;
         }
+
+        b = b->next();
     }
 
     // close the tag
@@ -3807,6 +4600,14 @@ void commonmark::generate_header(block::pointer_t b)
             break;
 
         }
+
+        // also add an identifier if not empty
+        //
+        std::string const id(to_identifier(b->content()));
+        if(!id.empty())
+        {
+            f_output += " id=\"" + id + "\"";
+        }
     }
     f_output += ">";
 
@@ -3818,6 +4619,55 @@ void commonmark::generate_header(block::pointer_t b)
     f_output += std::to_string(b->number());
     f_output += ">";
     f_output += f_features.get_line_feed();
+}
+
+
+std::string commonmark::to_identifier(character::string_t const & line)
+{
+    std::string id;
+
+    for(character::string_t::const_iterator it(line.begin());
+        it != line.end();
+        ++it)
+    {
+        if(it->f_char >= U'A' && it->f_char <= U'Z')
+        {
+            id += static_cast<char>(it->f_char | 0x20);
+        }
+        else if(it->f_char >= U'a' && it->f_char <= U'z')
+        {
+            id += static_cast<char>(it->f_char);
+        }
+        else if(it->f_char >= U'0' && it->f_char <= U'9')
+        {
+            if(id.empty())
+            {
+                id += "id-";
+            }
+            id += static_cast<char>(it->f_char);
+        }
+        else if(it->f_char == CHAR_TAB
+             || it->f_char == CHAR_SPACE
+             || it->f_char == CHAR_DASH)
+        {
+            if(!id.empty())
+            {
+                id += '-';
+            }
+        }
+        else if(it->f_char == CHAR_UNDERSCORE)
+        {
+            id += '_';
+        }
+    }
+
+    while(!id.empty()
+       && id.back() == '-')
+    {
+        id.pop_back();
+    }
+
+    return id;
 }
 
 
@@ -3877,6 +4727,9 @@ std::cerr << " ---- inline to parse: [" << line << "]\n";
         std::string run()
         {
             std::string result;
+            for(;
+                f_it != f_line.cend() && (f_it->is_blank() || f_it->is_eol());
+                ++f_it);
             while(f_it != f_line.cend())
             {
                 result += convert_char();
@@ -3895,26 +4748,49 @@ std::cerr << " ---- inline to parse: [" << line << "]\n";
 
             switch(f_it->f_char)
             {
+            case CHAR_LINE_FEED:
+                {
+                    ++f_it;
+                    auto et(f_it);
+                    for(;
+                        et != f_line.cend()
+                            && (et->is_eol() || et->is_blank());
+                        ++et);
+                    if(et == f_line.cend())
+                    {
+                        f_it = et;
+                        break;
+                    }
+                    result += '\n';
+                }
+                break;
+
             case CHAR_SPACE:
             case CHAR_TAB:
                 // if we only find blanks to the end of the content, then
                 // we can ignore it (trim to the right)
                 {
                     auto et(f_it);
-                    for(++et; et != f_line.cend() && et->is_blank(); ++et);
+                    for(++et;
+                        et != f_line.cend() && et->is_blank();
+                        ++et);
                     if(et == f_line.cend())
                     {
                         f_it = et;
                         break;
                     }
-                }
-                ++f_it;
-                if(f_it != f_line.cend()
-                && f_it->is_blank())
-                {
-                    ++f_it;
-                    if(f_it != f_line.cend()
-                    && f_it->is_eol())
+                    auto lt(et);
+                    for(;
+                        lt != f_line.cend() && (lt->is_eol() || lt->is_blank());
+                        ++lt);
+                    if(lt == f_line.cend())
+                    {
+                        f_it = lt;
+                        break;
+                    }
+
+                    if(et->is_eol()
+                    && et - f_it >= 2)  // at least 2 spaces for a hard break
                     {
                         // [REF] 6.7 Hard line breaks
                         //
@@ -3926,12 +4802,13 @@ std::cerr << " ---- inline to parse: [" << line << "]\n";
                         {
                             result += "<br/>";
                         }
-                        //++f_it;
+                        f_it = et;
+                        //++f_it; -- the '\n' needs to be added
                         break;
                     }
-                    --f_it;
                 }
-                result += (f_it - 1)->to_utf8();
+                result += f_it->to_utf8();
+                ++f_it;
                 break;
 
             case CHAR_AMPERSAND:
@@ -4116,6 +4993,13 @@ std::cerr << " ---- inline to parse: [" << line << "]\n";
 
         std::string convert_html_tag()
         {
+void const * it_ptr(reinterpret_cast<void const *>(&*f_it));
+if(it_ptr < reinterpret_cast<void const *>(&*f_line.cbegin())
+|| it_ptr > reinterpret_cast<void const *>(&*f_line.cend()))
+{
+    throw commonmark_logic_error("invalid iterator from convert_html_tag()?");
+}
+std::cerr << "---------------- convert HTML tag (inline)\n";
             // [REF] 6.5 Autolinks
             //
             // we first try for an autolink which is a sort of a shorthand
@@ -4375,12 +5259,16 @@ std::cerr << " *** remain after 'span': ["
             auto et(f_it);
             ++f_it;
 
+            // read data up to matching ']'
+            //
             std::string link_text;
-            if(!parse_link_text(f_line, et, link_text))
+            if(!parse_link_text(f_line, et, link_text, nullptr))
             {
                 return error_result;
             }
 
+            // check for an inline URL '(...)' and title
+            //
             std::string link_destination;
             std::string link_title;
             bool valid_destination(parse_link_destination(
@@ -4393,7 +5281,7 @@ std::cerr << " *** remain after 'span': ["
             bool short_reference(false);
             if(!valid_destination)
             {
-std::cerr << "not a valid link...\n";
+std::cerr << "not a valid link destination, try again as a reference...\n";
                 std::string link_reference;
                 parse_link_long_reference(et, link_reference);
 
@@ -4410,7 +5298,12 @@ std::cerr << "not a valid link...\n";
                     link::pointer_t link(f_find_link_reference(link_reference));
                     if(link == nullptr)
                     {
-std::cerr << ">>> not a link... return error\n";
+std::cerr << ">>> not a link... return error [" << error_result << "]\n";
+                        //if(f_features.get_remove_unknown_references())
+                        //{
+                        //    f_it = et;
+                        //    return std::string();
+                        //}
                         return error_result;
                     }
                     auto const & uri(link->uri_details(0));
@@ -4474,7 +5367,14 @@ std::cerr << ">>> not a link... return error\n";
 
             if(!is_image)
             {
-                result += link_text;
+                // parse the link text itself (as if part of a paragraph)
+                //
+                inline_parser sub_parser(
+                          character::to_character_string(link_text)
+                        , f_features
+                        , f_find_link_reference);
+                result += sub_parser.run();
+
                 result += "</a>";
             }
 
@@ -4579,13 +5479,16 @@ void commonmark::generate_code(block::pointer_t b)
     f_output += ">";
     character::string_t const & line(b->content());
     auto et(line.end());
-    while(et != line.begin())
+    if(b->is_indented_code_block())
     {
-        --et;
-        if(!et->is_eol())
+        while(et != line.begin())
         {
-            ++et;
-            break;
+            --et;
+            if(!et->is_eol())
+            {
+                ++et;
+                break;
+            }
         }
     }
     auto it(line.begin());
@@ -4605,13 +5508,18 @@ void commonmark::generate_code(block::pointer_t b)
             f_output += "&gt;";
             break;
 
+        case CHAR_QUOTE:
+            f_output += "&quot;";
+            break;
+
         default:
             f_output += it->to_utf8();
             break;
 
         }
     }
-    if(!line.empty())
+    if(b->is_indented_code_block()
+    && !line.empty())
     {
         f_output += '\n';
     }

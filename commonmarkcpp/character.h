@@ -452,7 +452,7 @@ struct character
 
     int hexdigit_number() const
     {
-        return snap::hexdigit_to_number(f_char);
+        return snapdev::hexdigit_to_number(f_char);
         //if(!is_hexdigit())
         //{
         //    throw commonmark_logic_error("hexdigit_number() called with an invalid hexadecimal-digit");

@@ -138,6 +138,7 @@ advgetopt::options_environment const g_options_environment =
     .f_options = g_options,
     .f_options_files_directory = nullptr,
     .f_environment_variable_name = "COMMONMARKCPP",
+    .f_section_variables_name = nullptr,
     .f_configuration_files = g_configuration_files,
     .f_configuration_filename = nullptr,
     .f_configuration_directories = nullptr,
@@ -284,7 +285,7 @@ int entities::read()
     for(std::size_t idx(0); idx < max; ++idx)
     {
         std::string const filename(f_opt.get_string("filenames", idx));
-        snap::file_contents input(filename);
+        snapdev::file_contents input(filename);
         if(!input.read_all())
         {
             std::cerr << "error: could not read \""
@@ -499,7 +500,7 @@ int entities::output_table_cpp()
             return a->get_name() < b->get_name();
         });
 
-    std::string header_filename(snap::pathinfo::replace_suffix(f_output_filename, ".cpp", ".h"));
+    std::string header_filename(snapdev::pathinfo::replace_suffix(f_output_filename, ".cpp", ".h"));
     std::ofstream hdr(header_filename);
 
     hdr << "#include <cstddef>\n"
@@ -556,7 +557,7 @@ int entities::output_table_binary()
             return a->get_name() < b->get_name();
         });
 
-    std::string binary_filename(snap::pathinfo::replace_suffix(f_output_filename, ".cpp", ".hent"));
+    std::string binary_filename(snapdev::pathinfo::replace_suffix(f_output_filename, ".cpp", ".hent"));
     std::ofstream bin(binary_filename);
 
     // file structure is
@@ -634,7 +635,7 @@ int main(int argc, char * argv[])
         std::cerr << "error: an unknown exception occurred (2)." << std::endl;
         exit(2);
     }
-    snap::NOT_REACHED();
+    snapdev::NOT_REACHED();
 }
 
 

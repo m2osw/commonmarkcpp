@@ -1,4 +1,4 @@
-// Copyright (c) 2021  Made to Order Software Corp.  All Rights Reserved
+// Copyright (c) 2021-2022  Made to Order Software Corp.  All Rights Reserved
 //
 // https://snapwebsites.org/project/commonmarkcpp
 // contact@m2osw.com
@@ -117,6 +117,7 @@ advgetopt::options_environment const g_options_environment =
     .f_options = g_options,
     .f_options_files_directory = nullptr,
     .f_environment_variable_name = "COMMONMARKCPP",
+    .f_section_variables_name = nullptr,
     .f_configuration_files = g_configuration_files,
     .f_configuration_filename = nullptr,
     .f_configuration_directories = nullptr,
@@ -194,7 +195,7 @@ int main(int argc, char * argv[])
         std::cerr << "error: an unknown exception occurred (2)." << std::endl;
         exit(2);
     }
-    snap::NOT_REACHED();
+    snapdev::NOT_REACHED();
 }
 
 

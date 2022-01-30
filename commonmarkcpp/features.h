@@ -65,6 +65,9 @@ public:
     void                    set_ins_del_extension(bool ins_del_extension);
     bool                    get_ins_del_extension() const;
 
+    void                    set_remove_unknown_references(bool remove);
+    bool                    get_remove_unknown_references() const;
+
     void                    set_line_feed(std::string const & line_feed);
     std::string const &     get_line_feed() const;
 
@@ -74,6 +77,7 @@ private:
     bool                    f_add_space_in_empty_tag = false;
     bool                    f_convert_entities = true;
     bool                    f_ins_del_extension = true;
+    bool                    f_remove_unknown_references = true;
     std::string             f_line_feed = std::string();
 };
 

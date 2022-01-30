@@ -182,6 +182,18 @@ bool features::get_ins_del_extension() const
 }
 
 
+void features::set_remove_unknown_references(bool remove)
+{
+    f_remove_unknown_references = remove;
+}
+
+
+bool features::get_remove_unknown_references() const
+{
+    return f_remove_unknown_references;
+}
+
+
 /** \brief Change the line feed between tags.
  *
  * By default, our implementation uses "" as the default line feed between

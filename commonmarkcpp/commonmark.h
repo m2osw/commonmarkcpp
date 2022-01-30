@@ -82,16 +82,12 @@ public:
 private:
     struct input_status_t
     {
-        typedef std::vector<input_status_t>     vector_t;
-
-                                input_status_t(
-                                      libutf8::utf8_iterator & iterator
-                                    , std::uint32_t line
-                                    , std::uint32_t column);
+        //typedef std::vector<input_status_t>     vector_t;
 
         libutf8::utf8_iterator  f_iterator;
         std::uint32_t           f_line = 1;
         std::uint32_t           f_column = 1;
+        character::string_t     f_last_line = character::string_t();
     };
 
     character               getc();
@@ -108,16 +104,20 @@ private:
     bool                    parse_list(character::string_t::const_iterator & it);
     bool                    is_thematic_break(character::string_t::const_iterator it);
 
-    void                    process_empty_line();
+    void                    process_empty_line(bool blockquote_followed_by_empty);
     void                    append_line();
+    void                    append_list_as_text(block::pointer_t dst_list_item, block::pointer_t src_list);
 
     bool                    process_paragraph(character::string_t::const_iterator & it);
-    bool                    process_thematic_break_or_setext_heading(character::string_t::const_iterator & it);
+    int                     process_thematic_break_or_setext_heading(character::string_t::const_iterator & it);
     bool                    process_reference_definition(character::string_t::const_iterator & it);
     bool                    parse_reference_destination(
                                   character::string_t::const_iterator & et
                                 , std::string & link_destination
                                 , std::string & link_title);
+    bool                    parse_reference_title(
+                                  character::string_t::const_iterator & et
+                                , std::string & title);
     bool                    process_header(character::string_t::const_iterator & it);
     bool                    process_indented_code_block(character::string_t::const_iterator & it);
     bool                    process_fenced_code_block(character::string_t::const_iterator & it);
@@ -126,6 +126,7 @@ private:
     void                    generate(block::pointer_t b);
     void                    generate_list(block::pointer_t & b);
     void                    generate_header(block::pointer_t b);
+    std::string             to_identifier(character::string_t const & line);
     void                    generate_thematic_break(block::pointer_t b);
     void                    generate_inline(character::string_t const & line);
     void                    generate_code(block::pointer_t b);
@@ -134,8 +135,8 @@ private:
     libutf8::utf8_iterator  f_iterator;  // must be defined in constructors
     std::uint32_t           f_line = 1;
     std::uint32_t           f_column = 1;
-    input_status_t::vector_t
-                            f_input_status = input_status_t::vector_t();
+    //input_status_t::vector_t
+    //                        f_input_status = input_status_t::vector_t();
 
     //int                     f_unget_pos = 0;
     //character_t             f_unget[2] = {};

@@ -207,7 +207,7 @@ CATCH_TEST_CASE("commonmark_test_suite", "[test-suite]")
         // file found on the commonmark website:
         //   https://spec.commonmark.org/0.30/
         //
-        snap::file_contents spec("tests/spec.json");
+        snapdev::file_contents spec("tests/spec.json");
         CATCH_REQUIRE(spec.read_all());
         libutf8::json_tokens json(spec.contents());
 

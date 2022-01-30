@@ -49,6 +49,7 @@ namespace cm
 constexpr char32_t const    BLOCK_TYPE_DOCUMENT = U'\x1F5CE'; // document symbol
 constexpr char32_t const    BLOCK_TYPE_LINE = U'\x2104'; // center line symbol
 constexpr char32_t const    BLOCK_TYPE_PARAGRAPH = U'\x00B6'; // paragraph symbol
+constexpr char32_t const    BLOCK_TYPE_TEXT = U'\x200B'; // zero width space
 constexpr char32_t const    BLOCK_TYPE_CODE_BLOCK_INDENTED = U'\t';
 constexpr char32_t const    BLOCK_TYPE_CODE_BLOCK_GRAVE = U'`';
 constexpr char32_t const    BLOCK_TYPE_CODE_BLOCK_TILDE = U'~';
@@ -63,9 +64,9 @@ constexpr char32_t const    BLOCK_TYPE_HEADER_OPEN = U'#';
 constexpr char32_t const    BLOCK_TYPE_HEADER_ENCLOSED = U'\x1F157'; // circle enclosed H
 constexpr char32_t const    BLOCK_TYPE_HEADER_SINGLE = U'_'; // source is '-', but '-' is used for lists
 constexpr char32_t const    BLOCK_TYPE_HEADER_DOUBLE = U'=';
-constexpr char32_t const    BLOCK_TYPE_BREAK_DASH = U'\x2022';
-constexpr char32_t const    BLOCK_TYPE_BREAK_ASTERISK = U'\x2023';
-constexpr char32_t const    BLOCK_TYPE_BREAK_UNDERLINE = U'\x2024';
+constexpr char32_t const    BLOCK_TYPE_BREAK_DASH = U'\x2022'; // bullet point (cicle)
+constexpr char32_t const    BLOCK_TYPE_BREAK_ASTERISK = U'\x2023'; // bullet point (triangle)
+constexpr char32_t const    BLOCK_TYPE_BREAK_UNDERLINE = U'\x2024'; // bullet point (small circle)
 
 
 
@@ -88,7 +89,11 @@ public:
     bool                    is_paragraph() const;
     bool                    is_code_block() const;
     bool                    is_indented_code_block() const;
+    bool                    is_fenced_code_block() const;
     bool                    is_list() const;
+    bool                    is_in_list() const;
+    pointer_t               find_list() const;
+    bool                    is_tight_list() const;
     bool                    is_ordered_list() const;
     bool                    is_unordered_list() const;
     bool                    is_blockquote() const;
@@ -102,10 +107,12 @@ public:
     int                     column() const;
     void                    end_column(int n);
     int                     end_column() const;
+    int                     get_blockquote_end_column();
     void                    number(int n);
     int                     number() const;
     void                    followed_by_an_empty_line(bool followed);
     bool                    followed_by_an_empty_line() const;
+    bool                    includes_blocks_with_empty_lines(bool recursive) const;
     void                    info_string(character::string_t const & info);
     character::string_t const &
                             info_string() const;

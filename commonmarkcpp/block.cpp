@@ -70,6 +70,9 @@ std::string type_to_string(char32_t type)
     case BLOCK_TYPE_PARAGRAPH:
         return "PARAGRAPH";
 
+    case BLOCK_TYPE_TEXT:
+        return "TEXT";
+
     case BLOCK_TYPE_CODE_BLOCK_INDENTED:
         return "CODE_BLOCK_INDENTED";
 
@@ -125,7 +128,7 @@ std::string type_to_string(char32_t type)
         return "<unknown type>";
 
     }
-    snap::NOT_REACHED();
+    snapdev::NOT_REACHED();
 }
 
 
@@ -166,6 +169,7 @@ block::block(character const & type)
  *
  * \sa is_paragraph()
  * \sa is_code_block()
+ * \sa is_indented_code_block()
  * \sa is_list()
  * \sa is_ordered_list()
  * \sa is_unordered_list()
@@ -240,6 +244,25 @@ bool block::is_indented_code_block() const
 }
 
 
+/** \brief Check whether this block represents a fenced block of code.
+ *
+ * The function checks the type to see whether it represents a fenced
+ * block of code or not. If so, it returns true.
+ *
+ * The fenced code blocks can appear in a list with the standard list
+ * indentation which is why we need to be able to distinguish this one
+ * type from the other.
+ *
+ * \return true if the type is one of BLOCK_TYPE_CODE_BLOCK_GRAVE or
+ * BLOCK_TYPE_CODE_BLOCK_TILDE.
+ */
+bool block::is_fenced_code_block() const
+{
+    return f_type == BLOCK_TYPE_CODE_BLOCK_GRAVE
+        || f_type == BLOCK_TYPE_CODE_BLOCK_TILDE;
+}
+
+
 /** \brief Check whether this block represents a list item.
  *
  * The function checks the type to see whether it represents a list item
@@ -259,6 +282,95 @@ bool block::is_list() const
         || f_type == BLOCK_TYPE_LIST_DASH
         || f_type == BLOCK_TYPE_LIST_PERIOD
         || f_type == BLOCK_TYPE_LIST_PARENTHESIS;
+}
+
+
+/** \brief Check whether this block or a parent is a list.
+ *
+ * This function checks this block and all of its parents for one that
+ * represents a list. If so, then the function returns true.
+ *
+ * \return true if this block or one of its parent is a list.
+ */
+bool block::is_in_list() const
+{
+    for(pointer_t b(const_cast<block *>(this)->shared_from_this());
+        b != nullptr;
+        b = b->parent())
+    {
+        if(b->is_list())
+        {
+            return true;
+        }
+    }
+    return false;
+}
+
+
+/** \brief Get the first block representing a list.
+ *
+ * This function looks at `this` block and through the list of its parents
+ * for a block representing a list (see is_list()). If one such block is
+ * found, then it gets returned. Otherwise the function returns a nullptr.
+ *
+ * \return The list in the parent lineage or nullptr.
+ */
+block::pointer_t block::find_list() const
+{
+    for(pointer_t b(const_cast<block *>(this)->shared_from_this());
+        b != nullptr;
+        b = b->parent())
+    {
+        if(b->is_list())
+        {
+            return b;
+        }
+    }
+    return block::pointer_t();
+}
+
+
+bool block::is_tight_list() const
+{
+    pointer_t b(const_cast<block *>(this)->shared_from_this());
+    if(b == nullptr)
+    {
+        throw std::logic_error("can't shared_from_this() in is_tight_list()");
+    }
+
+    char32_t const type(f_type.f_char);
+
+    // special case were we have a single item
+    //
+    if(b->children_size() == 1
+    && (b->next() == nullptr
+        || b->next()->type().f_char != type))
+    {
+//std::cerr << "- * ---------------------------- DOCUMENT TREE LIST TIGHT LIST FAILED AT:\n";
+//std::cerr << "- followed by empty line?! " << std::boolalpha << b->followed_by_an_empty_line() << "\n";
+//std::cerr << b->tree();
+//std::cerr << "- includes empty lines?! " << b->first_child()->includes_blocks_with_empty_lines(false) << "\n";
+//std::cerr << "- * ---------------------------- DOCUMENT TREE LIST TIGHT LIST FAILED AT END\n";
+        return true;
+        //return !b->first_child()->includes_blocks_with_empty_lines(false);
+    }
+
+    for(; b != nullptr && b->type().f_char == type; b = b->next())
+    {
+        if(b->followed_by_an_empty_line())
+        //|| (b->first_child() != nullptr
+        //        && b->first_child()->includes_blocks_with_empty_lines(false)))
+        {
+            if(b->next() != nullptr
+            && b->next()->type().f_char != type)
+            {
+                return true;
+            }
+            return false;
+        }
+    }
+
+    return true;
 }
 
 
@@ -475,6 +587,30 @@ int block::end_column() const
 }
 
 
+/** \brief Search for a blockquote and return its end column.
+ *
+ * This function searches for a blockquote. If one is found, then its
+ * end column is returned. If no blockquote is found, the function
+ * returns 0.
+ *
+ * \return The end column of the blockquote if on exists.
+ */
+int block::get_blockquote_end_column()
+{
+    for(pointer_t b(shared_from_this());
+        b != nullptr;
+        b = b->parent())
+    {
+        if(b->is_blockquote())
+        {
+            return b->end_column();
+        }
+    }
+
+    return 0;
+}
+
+
 /** \brief Define the list start number.
  *
  * List items defined as a number followed by either a period (`'.'`) or a
@@ -591,6 +727,46 @@ void block::followed_by_an_empty_line(bool followed)
 bool block::followed_by_an_empty_line() const
 {
     return f_followed_by_an_empty_line;
+}
+
+
+/** \brief Check whether a block is followed by a new line.
+ *
+ * This function is recursive. It will check whether this block, any of
+ * its following siblings (not preceeding), or any of its children is
+ * followed by an empty line.
+ *
+ * If such an empty line if found in this tree, then the function returns
+ * true. In all other cases, it returns false.
+ *
+ * \param[in] recursive  Whether to recurse in the children of the children.
+ *
+ * \return true if the tree starting with 'this' block includes at least
+ * one container followed by an empty line.
+ */
+bool block::includes_blocks_with_empty_lines(bool recursive) const
+{
+    pointer_t b(const_cast<block *>(this)->shared_from_this());
+    if(b == nullptr)
+    {
+        throw std::logic_error("can't shared_from_this() in is_tight_list()");
+    }
+
+    for(; b != nullptr; b = b->next())
+    {
+        // TBD: we may need to limit to tests to blocks of type LIST and
+        //      BLOCKQUOTE...
+        //
+        if(b->followed_by_an_empty_line()
+        || (recursive
+                && b->first_child() != nullptr
+                && b->first_child()->includes_blocks_with_empty_lines(true)))
+        {
+            return true;
+        }
+    }
+
+    return false;
 }
 
 

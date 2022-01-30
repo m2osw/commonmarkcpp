@@ -37,6 +37,7 @@
 
 // libutf8 lib
 //
+#include    <libutf8/caseinsensitivestring.h>
 
 
 // C++ lib
@@ -80,7 +81,7 @@ public:
     typedef std::shared_ptr<link>
                             pointer_t;
 
-    typedef std::map<std::string, pointer_t>
+    typedef std::map<libutf8::case_insensitive_string, pointer_t>
                             map_t;
 
     typedef std::function<pointer_t (std::string const & name)>
