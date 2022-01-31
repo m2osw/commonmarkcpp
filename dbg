@@ -1,0 +1,9 @@
+#!/bin/sh
+
+gdb -ex run \
+	--args \
+	../../BUILD/Debug/contrib/commonmarkcpp/tests/unittest \
+	--tmp-dir ../../BUILD/Debug/contrib/commonmarkcpp/tmp \
+	--progress \
+	character,commonmark_thematic_breaks,commonmark_atx_heading,commonmark_test_suite
+
