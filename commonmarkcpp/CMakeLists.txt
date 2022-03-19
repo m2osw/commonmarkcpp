@@ -82,7 +82,6 @@ configure_file(
 add_library(${PROJECT_NAME} SHARED
     block.cpp
     commonmark.cpp
-    ${CMAKE_CURRENT_BINARY_DIR}/commonmark_entities.cpp
     features.cpp
     link.cpp
     version.cpp
