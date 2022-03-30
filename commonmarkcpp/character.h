@@ -578,7 +578,7 @@ struct character
         std::u32string const u32(libutf8::to_u32string(s));
         for(auto const & ch : u32)
         {
-            character c;
+            character c{};
             c.f_char = ch;
             result += c;
         }
@@ -586,9 +586,12 @@ struct character
         return result;
     }
 
-    char32_t            f_char = CHAR_NULL;
-    std::uint32_t       f_line = 0;
-    std::uint32_t       f_column = 0;
+    // to make this struct available to std::string_basic<>() we cannot have
+    // a constructor and default values act like such...
+    //
+    char32_t            f_char /*= CHAR_NULL*/;
+    std::uint32_t       f_line /*= 0*/;
+    std::uint32_t       f_column /*= 0*/;
 };
 
 

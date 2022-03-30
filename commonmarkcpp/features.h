@@ -34,6 +34,7 @@
 // C++ lib
 //
 #include    <memory>
+#include    <string>
 
 
 

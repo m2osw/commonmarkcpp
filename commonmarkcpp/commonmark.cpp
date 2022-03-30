@@ -53,6 +53,7 @@
 #include    <algorithm>
 #include    <cstring>
 #include    <iostream>
+#include    <limits>
 #include    <sstream>
 
 
@@ -3475,7 +3476,7 @@ std::cerr << "   it on entry: [" << reinterpret_cast<void const *>(&*it) << "]\n
 std::cerr << "   it column " << it->f_column << " vs " << start_column << "\n";
     for(; start_column < it->f_column; ++start_column)
     {
-        character c;
+        character c{};
         c.f_char = CHAR_SPACE;
         b->append(c);
     }
@@ -3512,7 +3513,7 @@ std::cerr << "  +---> state " << state
 
                         if(f_last_line.empty())
                         {
-                            character c;
+                            character c{};
                             c.f_char = CHAR_LINE_FEED;
                             b->append(c);
                         }
@@ -3636,7 +3637,7 @@ std::cerr << "* identity first line: " << f_last_line << "\n";
 
                     if(f_last_line.empty())
                     {
-                        character c;
+                        character c{};
                         c.f_char = CHAR_LINE_FEED;
                         b->append(c);
                     }
@@ -3724,7 +3725,7 @@ std::cerr << "* identity first line: " << f_last_line << "\n";
 
                     if(f_last_line.empty())
                     {
-                        character c;
+                        character c{};
                         c.f_char = CHAR_LINE_FEED;
                         b->append(c);
                     }
@@ -3786,7 +3787,7 @@ std::cerr << "  +---> checking next line: " << f_last_line << "\n";
 
                 if(f_last_line.empty())
                 {
-                    character c;
+                    character c{};
                     c.f_char = CHAR_LINE_FEED;
                     b->append(c);
                 }
@@ -3831,7 +3832,7 @@ std::cerr << "  +---> checking next line: " << f_last_line << "\n";
 
         if(f_last_line.empty())
         {
-            character c;
+            character c{};
             c.f_char = CHAR_LINE_FEED;
             b->append(c);
         }
@@ -4263,7 +4264,7 @@ std::cerr << " ---- append whole line before closing tag or empty line...\n";
 
         if(f_last_line.empty())
         {
-            character c;
+            character c{};
             c.f_char = CHAR_LINE_FEED;
             b->append(c);
         }
@@ -4740,7 +4741,7 @@ std::cerr << " ---- inline to parse: [" << line << "]\n";
         std::string convert_char()
         {
             std::string result;
-            character previous;
+            character previous{};
             if(f_it != f_line.cbegin())
             {
                 previous = f_it[-1];
@@ -5464,7 +5465,7 @@ void commonmark::generate_code(block::pointer_t b)
         //          as the language whether we have a "lang:" or "lang="
         //          or such is ignored
         //
-        character c;
+        character c{};
         c.f_char = CHAR_SPACE;
         std::string::size_type const pos(info.find(c));
         character::string_t language(info);
