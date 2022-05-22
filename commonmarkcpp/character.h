@@ -98,7 +98,8 @@ constexpr char32_t const    CHAR_REPLACEMENT_CHARACTER = U'\xFFFD'; // FFFD
 
 
 
-
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
 struct character
 {
     typedef std::basic_string<character>  string_t;
@@ -453,23 +454,6 @@ struct character
     int hexdigit_number() const
     {
         return snapdev::hexdigit_to_number(f_char);
-        //if(!is_hexdigit())
-        //{
-        //    throw commonmark_logic_error("hexdigit_number() called with an invalid hexadecimal-digit");
-        //}
-        //if(f_char >= CHAR_ZERO && f_char <= CHAR_NINE)
-        //{
-        //    return f_char - CHAR_ZERO;
-        //}
-        //if(f_char >= 'a' && f_char <= 'f')
-        //{
-        //    return f_char - 'a' + 10;
-        //}
-        ////if(f_char >= 'A' && f_char <= 'F') -- we already know it is an hexdigit
-        //{
-        //    return f_char - 'A' + 10;
-        //}
-        //snap::NOT_REACHED();
     }
 
     bool is_ascii_punctuation() const
@@ -593,6 +577,7 @@ struct character
     std::uint32_t       f_line /*= 0*/;
     std::uint32_t       f_column /*= 0*/;
 };
+#pragma GCC diagnostic pop
 
 
 
