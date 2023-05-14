@@ -37,7 +37,7 @@ CATCH_TEST_CASE("character", "[test-suite]")
 {
     CATCH_START_SECTION("cm: invalid character (null)")
     {
-        cm::character c;
+        cm::character c{};
         CATCH_REQUIRE(c.is_null());
         c.fix_null();
         CATCH_REQUIRE_FALSE(c.is_null());
@@ -46,7 +46,7 @@ CATCH_TEST_CASE("character", "[test-suite]")
 
     CATCH_START_SECTION("cm: test basic characters")
     {
-        cm::character c;
+        cm::character c{};
 
         // by default, it's a 'null'
         CATCH_REQUIRE(c.is_null());
@@ -276,7 +276,7 @@ CATCH_TEST_CASE("character", "[test-suite]")
             //
             CATCH_REQUIRE(c == c.f_char);
             CATCH_REQUIRE(c == c);
-            cm::character d;
+            cm::character d{};
             CATCH_REQUIRE(c != d);
             CATCH_REQUIRE(c != f);
             d.f_char = f;
@@ -318,7 +318,7 @@ CATCH_TEST_CASE("character", "[test-suite]")
     CATCH_START_SECTION("cm: character: print hello")
     {
         cm::character::string_t str;
-        cm::character c;
+        cm::character c{};
 
         c.f_char = 'h';
         str += c;
@@ -341,7 +341,7 @@ CATCH_TEST_CASE("character", "[test-suite]")
     {
         for(char32_t idx(0); idx < 0x110000; ++idx)
         {
-            cm::character c;
+            cm::character c{};
             c.f_char = static_cast<char32_t>(idx);
             if(idx >= '0' && idx <= '9')
             {
