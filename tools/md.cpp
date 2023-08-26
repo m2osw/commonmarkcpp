@@ -27,32 +27,28 @@
  */
 
 
-// commonmarkcpp lib
+// commonmarkcpp
 //
 #include    "commonmarkcpp/commonmark.h"
 
 #include    "commonmarkcpp/version.h"
 
 
-// getopt lib
+// getopt
 //
 #include    <advgetopt/advgetopt.h>
 #include    <advgetopt/exception.h>
 
 
-// snapdev lib
+// snapdev
 //
 #include    <snapdev/not_reached.h>
+#include    <snapdev/stringize.h>
 
 
-// eventdispatcher lib
+// eventdispatcher
 //
 #include    <eventdispatcher/signal_handler.h>
-
-
-// boost lib
-//
-#include    <boost/preprocessor/stringize.hpp>
 
 
 // last include
@@ -128,7 +124,7 @@ advgetopt::options_environment const g_options_environment =
     .f_help_footer = "%c",
     .f_version = COMMONMARKCPP_VERSION_STRING,
     .f_license = "GPL v2 or newer",
-    .f_copyright = "Copyright (c) 2021-" BOOST_PP_STRINGIZE(UTC_BUILD_YEAR) "  Made to Order Software Corporation",
+    .f_copyright = "Copyright (c) 2021-" SNAPDEV_STRINGIZE(UTC_BUILD_YEAR) "  Made to Order Software Corporation",
     .f_build_date = UTC_BUILD_DATE,
     .f_build_time = UTC_BUILD_TIME,
     .f_groups = g_group_descriptions
