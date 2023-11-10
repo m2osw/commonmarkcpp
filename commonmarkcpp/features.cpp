@@ -59,7 +59,10 @@ void features::set_commonmark_compatible()
     f_add_space_in_empty_tag = true;
     f_convert_entities = true;
     f_ins_del_extension = false;
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wrestrict"
     f_line_feed = "\n";
+#pragma GCC diagnostic pop
 }
 
 
