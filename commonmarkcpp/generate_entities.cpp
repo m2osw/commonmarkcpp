@@ -27,43 +27,43 @@
  */
 
 
-// commonmarkcpp lib
+// commonmarkcpp
 //
 #include    "commonmarkcpp/commonmark.h"
 
 #include    "commonmarkcpp/version.h"
 
 
-// getopt lib
+// getopt
 //
 #include    <advgetopt/advgetopt.h>
 #include    <advgetopt/exception.h>
 
 
-// libutf8 lib
+// libutf8
 //
 #include    <libutf8/json_tokens.h>
 #include    <libutf8/libutf8.h>
 
 
-// snapdev lib
+// snapdev
 //
 #include    <snapdev/file_contents.h>
 #include    <snapdev/not_reached.h>
 #include    <snapdev/pathinfo.h>
 
 
-// eventdispatcher lib
+// eventdispatcher
 //
 #include    <eventdispatcher/signal_handler.h>
 
 
-// boost lib
+// boost
 //
 #include    <boost/preprocessor/stringize.hpp>
 
 
-// C++ lib
+// C++
 //
 #include    <iomanip>
 
@@ -504,7 +504,8 @@ int entities::output_table_cpp()
     std::string header_filename(snapdev::pathinfo::replace_suffix(f_output_filename, ".cpp", ".h"));
     std::ofstream hdr(header_filename);
 
-    hdr << "#include <cstddef>\n"
+    hdr << "#pragma once\n"
+        << "#include <cstddef>\n"
         << "namespace cm {\n"
         << "struct entity_t {\n"
         << "char const * const f_name;\n"

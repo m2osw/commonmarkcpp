@@ -42,13 +42,13 @@
 #include    "commonmarkcpp/commonmark_entities.h"
 
 
-// snapdev lib
+// snapdev
 //
 #include    <snapdev/hexadecimal_string.h>
 #include    <snapdev/string_replace_many.h>
 
 
-// C++ lib
+// C++
 //
 #include    <algorithm>
 #include    <cstring>
