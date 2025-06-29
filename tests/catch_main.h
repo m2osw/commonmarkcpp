@@ -1,4 +1,4 @@
-// Copyright (c) 2021-2022  Made to Order Software Corp.  All Rights Reserved
+// Copyright (c) 2021-2025  Made to Order Software Corp.  All Rights Reserved
 //
 // https://snapwebsites.org/project/commonmarkcpp
 // contact@m2osw.com
@@ -18,12 +18,12 @@
 // 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #pragma once
 
-// catch2 lib
+// catch2
 //
 #include    <catch2/snapcatch2.hpp>
 
 
-// C++ lib
+// C++
 //
 #include    <string>
 #include    <cstring>

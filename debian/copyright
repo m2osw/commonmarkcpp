@@ -3,8 +3,8 @@ Upstream-Name: commonmarkcpp
 Source: https://github.com/m2osw/commonmarkcpp
 
 Files: *
-Copyright: 2012-2021 Made to Order Software Corp. <contact@m2osw.com>
-           2012-2021 Alexis Wilke <alexis@m2osw.com>
+Copyright: 2012-2025  Made to Order Software Corp. <contact@m2osw.com>
+           2012-2025  Alexis Wilke <alexis@m2osw.com>
 License: GPL-2+
  This package is free software; you can redistribute it and/or modify
  it under the terms of the GNU General Public License as published by

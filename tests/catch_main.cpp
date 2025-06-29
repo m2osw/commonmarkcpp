@@ -1,4 +1,4 @@
-// Copyright (c) 2021-2022  Made to Order Software Corp.  All Rights Reserved
+// Copyright (c) 2021-2025  Made to Order Software Corp.  All Rights Reserved
 //
 // https://snapwebsites.org/project/commonmarkcpp
 // contact@m2osw.com
@@ -25,17 +25,17 @@
 #include    "catch_main.h"
 
 
-// commonmarkcpp lib
+// commonmarkcpp
 //
 #include    <commonmarkcpp/version.h>
 
 
-// libexcept lib
+// libexcept
 //
 #include    <libexcept/exception.h>
 
 
-// C++ lib
+// C++
 //
 #include    <sstream>
 

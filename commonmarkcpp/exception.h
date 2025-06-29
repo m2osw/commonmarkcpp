@@ -1,4 +1,4 @@
-// Copyright (c) 2013-2022  Made to Order Software Corp.  All Rights Reserved
+// Copyright (c) 2013-2025  Made to Order Software Corp.  All Rights Reserved
 //
 // https://snapwebsites.org/project/commonmark
 // contact@m2osw.com
@@ -26,7 +26,7 @@
  */
 
 
-// libexcept lib
+// libexcept
 //
 #include    <libexcept/exception.h>
 
