@@ -1,4 +1,4 @@
-commonmarkcpp (1.0.0.0~jammy) xenial; urgency=high
+commonmarkcpp (1.0.0.0~noble) noble; urgency=high
 
   * C++ implementation of the Common Mark specification.
 
