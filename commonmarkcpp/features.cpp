@@ -82,7 +82,8 @@ void features::set_compressed()
  * generally going to be very useful. If you call this function with true,
  * the output will include a div with a class set to just `"cm"`.
  *
- * \param[in] add  Whether to add `<div class=...>` around the whole document.
+ * \param[in] add_document_div  Whether to add `<div class=...>` around
+ *                              the whole document.
  */
 void features::set_add_document_div(bool add_document_div)
 {
@@ -106,7 +107,7 @@ bool features::get_add_document_div() const
  * This flag is false by default (i.e. do not add the classes). Call this
  * function to set it to true.
  *
- * \param[in] add  Whether to add `class=...` to the HTML tags.
+ * \param[in] add_classes  Whether to add `class=...` to the HTML tags.
  */
 void features::set_add_classes(bool add_classes)
 {
@@ -136,7 +137,8 @@ bool features::get_add_classes() const
  * the commonmark spec., we have a flag to have that space added
  * in those tags.
  *
- * \param[in] add  Whether to add the extra, useless space to empty tags.
+ * \param[in] add_space_in_empty_tag  Whether to add the extra, useless
+ *                                    space to empty tags.
  */
 void features::set_add_space_in_empty_tag(bool add_space_in_empty_tag)
 {
@@ -159,7 +161,8 @@ bool features::get_add_space_in_empty_tag() const
  * flag to false, then the conversion doesn't happen and the HTML will
  * include the entity as is: \&copy;.
  *
- * \param[in] convert  Whether to convert (true) or not (false) the entities.
+ * \param[in] convert_entities  Whether to convert (true) or not (false)
+ *                              the entities.
  */
 void features::set_convert_entities(bool convert_entities)
 {

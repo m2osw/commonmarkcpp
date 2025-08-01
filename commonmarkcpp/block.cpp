@@ -611,7 +611,7 @@ int block::get_blockquote_end_column()
 }
 
 
-/** \brief Define the list start number.
+/** \brief Define the list starting number.
  *
  * List items defined as a number followed by either a period (`'.'`) or a
  * closing parenthesis (`')'`) represent an ordered list. The given number
@@ -624,7 +624,7 @@ int block::get_blockquote_end_column()
  * The start point of a list can only be defined for those two types of list.
  * If the block represents anything else, then this error is raised.
  *
- * \param[in] start  The list start point.
+ * \param[in] n  The list starting number.
  */
 void block::number(int n)
 {

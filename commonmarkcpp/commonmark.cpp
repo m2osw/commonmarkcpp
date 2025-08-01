@@ -1199,8 +1199,6 @@ character commonmark::getc()
  * If the function finds the end of the string, then it sets a flag to
  * true. However, this is not the end of the file yet unless the returned
  * string is also empty.
- *
- * \return The line in a string.
  */
 void commonmark::get_line()
 {
@@ -1299,8 +1297,6 @@ void commonmark::restore_status(input_status_t const & status)
  * equivalent
  *
  * \li Anything else (other than an empty line) represents a regular paragraph.
- *
- * \return true if we found something, false if the line is considered empty.
  */
 void commonmark::parse()
 {
