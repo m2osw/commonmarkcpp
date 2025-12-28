@@ -51,7 +51,7 @@
 #include    <snapdev/file_contents.h>
 #include    <snapdev/not_reached.h>
 #include    <snapdev/pathinfo.h>
-#include    <snadev/stringize.h>
+#include    <snapdev/stringize.h>
 
 
 // eventdispatcher
