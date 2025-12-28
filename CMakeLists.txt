@@ -23,7 +23,6 @@ project(commonmarkcpp_project)
 
 find_package(SnapCMakeModules REQUIRED)
 find_package(AdvGetOpt        REQUIRED)
-find_package(Boost            REQUIRED)
 find_package(CppThread        REQUIRED)
 find_package(EventDispatcher  REQUIRED)
 find_package(LibExcept        REQUIRED)
