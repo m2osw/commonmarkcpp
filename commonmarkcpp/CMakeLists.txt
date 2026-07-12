@@ -50,15 +50,26 @@ project(commonmark_entities)
 set(ENTITIES_CPP ${PROJECT_BINARY_DIR}/commonmark_entities.cpp)
 
 add_custom_command(
-    OUTPUT ${ENTITIES_CPP}
-    COMMAND generate_entities --output ${ENTITIES_CPP} entities.json
-    WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
-    MAIN_DEPENDENCY ${PROJECT_SOURCE_DIR}/entities.json
-    DEPENDS generate_entities
+    OUTPUT
+        ${ENTITIES_CPP}
+
+    COMMAND
+        "LSAN_OPTIONS=suppressions=${CMAKE_BINARY_DIR}/../../dist/share/snaplogger/suppress-leaks.txt"
+        ${CMAKE_CURRENT_BINARY_DIR}/generate_entities --output ${ENTITIES_CPP} entities.json
+
+    WORKING_DIRECTORY
+        ${PROJECT_SOURCE_DIR}
+
+    MAIN_DEPENDENCY
+        ${PROJECT_SOURCE_DIR}/entities.json
+
+    DEPENDS
+        generate_entities
 )
 
 add_custom_target(${PROJECT_NAME}
-    ALL DEPENDS ${ENTITIES_CPP}
+    ALL DEPENDS
+        ${ENTITIES_CPP}
 )
 
 define_property(SOURCE
