@@ -28,6 +28,7 @@ find_package(EventDispatcher  REQUIRED)
 find_package(LibExcept        REQUIRED)
 find_package(LibUtf8          REQUIRED)
 find_package(SnapDev          REQUIRED)
+find_package(SnapLogger       REQUIRED)
 
 SnapGetVersion(COMMONMARKCPP ${CMAKE_CURRENT_SOURCE_DIR})
 

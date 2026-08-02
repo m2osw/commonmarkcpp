@@ -12,7 +12,8 @@ Build-Depends: cmake,
     libutf8-dev (>= 1.0.6.0~jammy),
     snapcatch2 (>= 2.13.7.0~jammy),
     snapcmakemodules (>= 1.0.60.0~jammy),
-    snapdev (>= 1.1.18.0~jammy)
+    snapdev (>= 1.1.18.0~jammy),
+    snaplogger-dev (>= 1.0.0.0~jammy)
 Standards-Version: 3.9.4
 Section: libs
 Homepage: https://snapwebsites.org/
